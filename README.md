@@ -19,7 +19,6 @@ pub fn main() {
     |> mug.timeout(milliseconds: 500)
     |> mug.connect()
 
-
   // Send a packet to the server
   let assert Ok(Nil) = mug.send(socket, <<"Hello, Joe!\n":utf8>>)
 
