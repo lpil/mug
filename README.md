@@ -3,20 +3,32 @@
 [![Package Version](https://img.shields.io/hexpm/v/mug)](https://hex.pm/packages/mug)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/mug/)
 
-## Quick start
-
-```sh
-gleam run   # Run the project
-gleam test  # Run the tests
-gleam shell # Run an Erlang shell
-```
-
-## Installation
-
-If available on Hex this package can be added to your Gleam project:
+A TCP client for Gleam!
 
 ```sh
 gleam add mug
 ```
 
-and its documentation can be found at <https://hexdocs.pm/mug>.
+```gleam
+import mug
+
+pub fn main() {
+  // Form a connection to a TCP server
+  let assert Ok(socket) =
+    mug.new("erlang-the-movie.example.com", port: 12345)
+    |> mug.timeout(milliseconds: 500)
+    |> mug.connect()
+
+
+  // Send a packet to the server
+  let assert Ok(Nil) = mug.send(socket, <<"Hello, Joe!\n":utf8>>)
+
+  // Receive a packet back
+  let assert Ok(packet) = mug.receive(socket, timeout_milliseconds: 100)
+  
+  packet
+  // -> <<"Hello, Mike!":utf8>>
+}
+```
+
+Documentation can be found at <https://hexdocs.pm/mug>.

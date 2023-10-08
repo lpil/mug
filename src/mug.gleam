@@ -42,7 +42,7 @@ pub type ConnectionOptions {
 }
 
 // TODO: document
-pub fn new(host: String, port: Int) -> ConnectionOptions {
+pub fn new(host: String, port port: Int) -> ConnectionOptions {
   ConnectionOptions(host: host, port: port, timeout: 1000)
 }
 
@@ -81,8 +81,13 @@ fn gen_tcp_connect(
 ) -> Result(Socket, Error)
 
 // TODO: document
+pub fn send(socket: Socket, packet: BitArray) -> Result(Nil, Error) {
+  send_builder(socket, bit_builder.from_bit_string(packet))
+}
+
+// TODO: document
 @external(erlang, "mug_ffi", "send")
-pub fn send(socket: Socket, packet: BitBuilder) -> Result(Nil, Error)
+pub fn send_builder(socket: Socket, packet: BitBuilder) -> Result(Nil, Error)
 
 // TODO: document
 pub fn receive(

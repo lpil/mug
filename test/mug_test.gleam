@@ -28,7 +28,7 @@ pub fn main() {
 
 pub fn hello_world_test() {
   let assert Ok(socket) =
-    mug.new("localhost", port)
+    mug.new("localhost", port: port)
     |> mug.timeout(milliseconds: 500)
     |> mug.connect()
 
@@ -36,10 +36,10 @@ pub fn hello_world_test() {
   // to receive a packet.
   let assert Error(mug.Timeout) = mug.receive(socket, timeout_milliseconds: 0)
 
-  let assert Ok(Nil) = mug.send(socket, bits("Hello, Joe!\n"))
-  let assert Ok(Nil) = mug.send(socket, bits("Hello, Mike!\n"))
-  let assert Ok(Nil) = mug.send(socket, bits("System still working?\n"))
-  let assert Ok(Nil) = mug.send(socket, bits("Seems to be!"))
+  let assert Ok(Nil) = mug.send(socket, <<"Hello, Joe!\n":utf8>>)
+  let assert Ok(Nil) = mug.send(socket, <<"Hello, Mike!\n":utf8>>)
+  let assert Ok(Nil) = mug.send_builder(socket, bits("System still working?\n"))
+  let assert Ok(Nil) = mug.send_builder(socket, bits("Seems to be!"))
 
   let assert Ok(packet) = mug.receive(socket, timeout_milliseconds: 100)
   let assert Ok(packet) = bit_string.to_string(packet)
@@ -50,6 +50,6 @@ pub fn hello_world_test() {
 
   let assert Ok(_) = mug.shutdown(socket)
 
-  let assert Error(mug.Closed) = mug.send(socket, bits("One more thing!"))
+  let assert Error(mug.Closed) = mug.send(socket, <<"One more thing!":utf8>>)
   let assert Error(mug.Closed) = mug.receive(socket, timeout_milliseconds: 0)
 }
