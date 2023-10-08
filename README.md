@@ -1,4 +1,4 @@
-# mug
+# ☕ mug
 
 [![Package Version](https://img.shields.io/hexpm/v/mug)](https://hex.pm/packages/mug)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/mug/)
