@@ -1,9 +1,21 @@
 import gleam/bit_builder.{type BitBuilder}
+import gleam/dynamic.{type Dynamic}
+import gleam/erlang/atom
 import gleam/erlang/charlist.{type Charlist}
+import gleam/erlang/process
 
 pub type Socket
 
+type DoNotLeak
+
+/// Errors that can occur when working with TCP sockets.
+///
+/// For more information on these errors see the Erlang documentation:
+/// - https://www.erlang.org/doc/man/file#type-posix
+/// - https://www.erlang.org/doc/man/inet#type-posix
+///
 pub type Error {
+  // https://www.erlang.org/doc/man/inet#type-posix
   Closed
   Timeout
   Eaddrinuse
@@ -34,19 +46,79 @@ pub type Error {
   Ewouldblock
   Exbadport
   Exbadseq
+  // https://www.erlang.org/doc/man/file#type-posix
+  Eacces
+  Eagain
+  Ebadf
+  Ebadmsg
+  Ebusy
+  Edeadlk
+  Edeadlock
+  Edquot
+  Eexist
+  Efault
+  Efbig
+  Eftype
+  Eintr
+  Einval
+  Eio
+  Eisdir
+  Eloop
+  Emfile
+  Emlink
+  Emultihop
+  Enametoolong
+  Enfile
+  Enobufs
+  Enodev
+  Enolck
+  Enolink
+  Enoent
+  Enomem
+  Enospc
+  Enosr
+  Enostr
+  Enosys
+  Enotblk
+  Enotdir
+  Enotsup
+  Enxio
+  Eopnotsupp
+  Eoverflow
+  Eperm
+  Epipe
+  Erange
+  Erofs
+  Espipe
+  Esrch
+  Estale
+  Etxtbsy
+  Exdev
 }
 
-// TODO: document
 pub type ConnectionOptions {
-  ConnectionOptions(host: String, port: Int, timeout: Int)
+  ConnectionOptions(
+    /// The hostname of the server to connect to.
+    host: String,
+    /// The port of the server to connect to.
+    port: Int,
+    /// A timeout in milliseconds for the connection to be established.
+    ///
+    /// Note that if the operating system returns a timeout then this package
+    /// will also return a timeout, even if this timeout value has not been
+    /// reached yet.
+    timeout: Int,
+  )
 }
 
-// TODO: document
+/// Create a new set of connection options.
+///
 pub fn new(host: String, port port: Int) -> ConnectionOptions {
   ConnectionOptions(host: host, port: port, timeout: 1000)
 }
 
-// TODO: document
+/// Specify a timeout for the connection to be established.
+///
 pub fn timeout(
   options: ConnectionOptions,
   milliseconds timeout: Int,
@@ -54,23 +126,43 @@ pub fn timeout(
   ConnectionOptions(..options, timeout: timeout)
 }
 
-// TODO: document
+/// Establish a TCP connection to the server specified in the connection
+/// options.
+///
+/// Returns an error if the connection could not be established.
+///
+/// The socket is created in passive mode, meaning the the `receive` function is
+/// to be called to receive packets from the client. The
+/// `receive_next_packet_as_message` function can be used to switch the socket
+/// to active mode and receive the next packet as an Erlang message.
+///
 pub fn connect(options: ConnectionOptions) -> Result(Socket, Error) {
   let gen_options = [
     // When data is received on the socket queue it in the TCP stack rather than
     // sending it as an Erlang message to the socket owner's inbox.
-    Active(False),
+    #(Active, dynamic.from(False)),
     // We want the data from the socket as bit arrays please, not lists.
-    Binary,
+    #(Mode, dynamic.from(Binary)),
   ]
   let host = charlist.from_string(options.host)
   gen_tcp_connect(host, options.port, gen_options, options.timeout)
 }
 
-type GenTcpOption {
-  Active(Bool)
+type GenTcpOptionName {
+  Active
+  Mode
+}
+
+type ModeValue {
   Binary
 }
+
+type ActiveValue {
+  Once
+}
+
+type GenTcpOption =
+  #(GenTcpOptionName, Dynamic)
 
 @external(erlang, "gen_tcp", "connect")
 fn gen_tcp_connect(
@@ -80,16 +172,24 @@ fn gen_tcp_connect(
   timeout: Int,
 ) -> Result(Socket, Error)
 
-// TODO: document
+/// Send a packet to the client.
+///
 pub fn send(socket: Socket, packet: BitArray) -> Result(Nil, Error) {
   send_builder(socket, bit_builder.from_bit_string(packet))
 }
 
-// TODO: document
+/// Send a packet to the client, the data in `BitBuilder`. Using this function
+/// is more efficient turning an `BitBuilder` or a `StringBuilder` into a
+/// `BitArray` to use with the `send` function.
+///
 @external(erlang, "mug_ffi", "send")
 pub fn send_builder(socket: Socket, packet: BitBuilder) -> Result(Nil, Error)
 
-// TODO: document
+/// Receive a packet from the client.
+///
+/// Errors if the socket is closed, if the timeout is reached, or if there is
+/// some other problem receiving the packet.
+///
 pub fn receive(
   socket: Socket,
   timeout_milliseconds timeout: Int,
@@ -104,6 +204,88 @@ fn gen_tcp_receive(
   timeout_milliseconds timeout: Int,
 ) -> Result(BitArray, Error)
 
-// TODO: document
+/// Close the socket, ensuring that any data buffered in the socket is flushed to the operating system kernel socket first.
+///
 @external(erlang, "mug_ffi", "shutdown")
 pub fn shutdown(socket: Socket) -> Result(Nil, Error)
+
+/// Switch the socket to active mode, meaning that the next packet received on
+/// the socket will be sent as an Erlang message to the socket owner's inbox.
+///
+/// This is useful for when you wish to have an OTP actor handle incoming
+/// messages as using the `receive` function would result in the actor being
+/// blocked and unable to handle other messages while waiting for the next
+/// packet.
+///
+/// Messages will be send to the process that controls the socket, which is the
+/// process that established the socket with the `connect` function.
+///
+pub fn receive_next_packet_as_message(socket: Socket) -> Nil {
+  set_socket_options(socket, [#(Active, dynamic.from(Once))])
+  Nil
+}
+
+@external(erlang, "inet", "setopts")
+fn set_socket_options(socket: Socket, options: List(GenTcpOption)) -> DoNotLeak
+
+/// Messages that can be sent by the socket to the process that controls it.
+///
+pub type TcpMessage {
+  /// A packet has been received from the client.
+  Packet(Socket, BitArray)
+  /// The socket has been closed by the client.
+  SocketClosed(Socket)
+  /// An error has occurred on the socket.
+  TcpError(Socket, Error)
+}
+
+/// Configure a selector to receive messages from TCP sockets.
+///
+/// Note this will receive messages from all TCP sockets that the process
+/// controls, rather than any specific one. If you wish to only handle messages
+/// from one socket then use one process per socket.
+///
+pub fn selecting_tcp_messages(
+  selector: process.Selector(t),
+  mapper: fn(TcpMessage) -> t,
+) -> process.Selector(t) {
+  let tcp = atom.create_from_string("tcp")
+  let closed = atom.create_from_string("tcp_closed")
+  let error = atom.create_from_string("tcp_error")
+
+  selector
+  |> process.selecting_record3(tcp, unsafe_coerce_packet(mapper))
+  |> process.selecting_record2(closed, unsafe_coerce_closed(mapper))
+  |> process.selecting_record3(error, unsafe_coerce_to_tcp_error(mapper))
+}
+
+fn unsafe_coerce_packet(
+  mapper: fn(TcpMessage) -> t,
+) -> fn(Dynamic, Dynamic) -> t {
+  fn(socket, data) {
+    Packet(unsafe_coerce_to_socket(socket), dynamic.unsafe_coerce(data))
+    |> mapper
+  }
+}
+
+fn unsafe_coerce_closed(mapper: fn(TcpMessage) -> t) -> fn(Dynamic) -> t {
+  fn(socket) {
+    SocketClosed(unsafe_coerce_to_socket(socket))
+    |> mapper
+  }
+}
+
+fn unsafe_coerce_to_tcp_error(
+  mapper: fn(TcpMessage) -> t,
+) -> fn(Dynamic, Dynamic) -> t {
+  fn(socket, reason) {
+    mapper(TcpError(
+      unsafe_coerce_to_socket(socket),
+      dynamic.unsafe_coerce(reason),
+    ))
+  }
+}
+
+fn unsafe_coerce_to_socket(socket: Dynamic) -> Socket {
+  dynamic.unsafe_coerce(socket)
+}

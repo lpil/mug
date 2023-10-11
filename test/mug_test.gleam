@@ -1,6 +1,7 @@
 import gleam/bit_builder.{from_string as bits}
 import gleam/bit_string
 import gleam/otp/actor
+import gleam/erlang/process
 import gleam/string
 import gleeunit
 import gleeunit/should
@@ -26,11 +27,16 @@ pub fn main() {
   gleeunit.main()
 }
 
-pub fn hello_world_test() {
+fn connect() -> mug.Socket {
   let assert Ok(socket) =
     mug.new("localhost", port: port)
     |> mug.timeout(milliseconds: 500)
     |> mug.connect()
+  socket
+}
+
+pub fn hello_world_test() {
+  let socket = connect()
 
   // Nothing has been sent by the echo server yet, so we get a timeout if we try
   // to receive a packet.
@@ -52,4 +58,37 @@ pub fn hello_world_test() {
 
   let assert Error(mug.Closed) = mug.send(socket, <<"One more thing!":utf8>>)
   let assert Error(mug.Closed) = mug.receive(socket, timeout_milliseconds: 0)
+}
+
+pub fn active_mode_test() {
+  let socket = connect()
+
+  // Ask for the next packet to be sent as a message
+  mug.receive_next_packet_as_message(socket)
+
+  // The socket is in use, we can't receive from it directly
+  let assert Error(mug.Einval) = mug.receive(socket, 0)
+
+  // Send a message to the socket
+  let assert Ok(Nil) = mug.send(socket, <<"Hello, Joe!\n":utf8>>)
+
+  let selector =
+    process.new_selector()
+    |> mug.selecting_tcp_messages(fn(msg) { msg })
+
+  let assert Ok(mug.Packet(packet_socket, <<"Hello, Joe!\n":utf8>>)) =
+    process.select(selector, 100)
+
+  packet_socket
+  |> should.equal(socket)
+
+  // Send another packet
+  let assert Ok(Nil) = mug.send(socket, <<"Hello, Mike!\n":utf8>>)
+
+  // The socket is in passive mode, so we don't get another message.
+  let assert Error(Nil) = process.select(selector, 100)
+
+  // The socket is back in passive mode, we can receive from it directly again.
+  let assert Ok(<<"Hello, Mike!\n":utf8>>) = mug.receive(socket, 0)
+  let assert Error(mug.Timeout) = mug.receive(socket, 0)
 }
