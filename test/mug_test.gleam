@@ -1,14 +1,12 @@
-import gleam/bit_builder.{from_string as bits}
-import gleam/bit_string
+import gleam/bytes_builder.{from_string as bits}
+import gleam/bit_array
 import gleam/otp/actor
 import gleam/erlang/process
 import gleam/string
 import gleeunit
 import gleeunit/should
+import gleam/option.{None}
 import glisten
-import glisten/acceptor
-import glisten/handler
-import glisten/tcp
 import mug
 
 pub const port = 64_793
@@ -16,13 +14,15 @@ pub const port = 64_793
 pub fn main() {
   // Start an echo TCP server for the tests to use
   let assert Ok(_) =
-    handler.func(fn(msg, state) {
-      let assert Ok(_) =
-        tcp.send(state.socket, bit_builder.from_bit_string(msg))
-      actor.continue(state)
-    })
-    |> acceptor.new_pool
-    |> glisten.serve(port, _)
+    glisten.handler(
+      fn() { #(Nil, None) },
+      fn(msg, state, conn) {
+        let assert glisten.Packet(msg) = msg
+        let assert Ok(_) = glisten.send(conn, bytes_builder.from_bit_array(msg))
+        actor.continue(state)
+      },
+    )
+    |> glisten.serve(port)
 
   gleeunit.main()
 }
@@ -48,7 +48,7 @@ pub fn hello_world_test() {
   let assert Ok(Nil) = mug.send_builder(socket, bits("Seems to be!"))
 
   let assert Ok(packet) = mug.receive(socket, timeout_milliseconds: 100)
-  let assert Ok(packet) = bit_string.to_string(packet)
+  let assert Ok(packet) = bit_array.to_string(packet)
   string.split(packet, "\n")
   |> should.equal([
     "Hello, Joe!", "Hello, Mike!", "System still working?", "Seems to be!",
