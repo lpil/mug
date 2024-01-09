@@ -30,4 +30,7 @@ pub fn main() {
 }
 ```
 
+It also includes support for receiving packages as Erlang messages, enabling
+TCP sockets to be used within OTP actors.
+
 Documentation can be found at <https://hexdocs.pm/mug>.
