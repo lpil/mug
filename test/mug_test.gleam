@@ -35,6 +35,13 @@ fn connect() -> mug.Socket {
   socket
 }
 
+pub fn connect_invalid_host_test() {
+  let assert Error(mug.Nxdomain) =
+    mug.new("invalid.example.com", port: port)
+    |> mug.timeout(milliseconds: 500)
+    |> mug.connect()
+}
+
 pub fn hello_world_test() {
   let socket = connect()
 
