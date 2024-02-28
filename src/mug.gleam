@@ -46,6 +46,7 @@ pub type Error {
   Ewouldblock
   Exbadport
   Exbadseq
+  Nxdomain
   // https://www.erlang.org/doc/man/file#type-posix
   Eacces
   Eagain
