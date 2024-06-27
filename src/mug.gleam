@@ -125,7 +125,12 @@ pub type IpVersion {
 /// Create a new set of connection options.
 ///
 pub fn new(host: String, port port: Int) -> ConnectionOptions {
-  ConnectionOptions(host: host, port: port, timeout: 1000, ip_version: HappyEyeballs)
+  ConnectionOptions(
+    host: host,
+    port: port,
+    timeout: 1000,
+    ip_version: HappyEyeballs,
+  )
 }
 
 /// Specify a timeout for the connection to be established.
@@ -171,13 +176,21 @@ fn connect_happy_eyballs(options: ConnectionOptions) -> Result(Socket, Error) {
     fn() {
       // 250ms is the suggested delay
       process.sleep(250)
-      happy_eyeballs_attempt(subject, pid, ConnectionOptions(..options, ip_version: Ipv4))
+      happy_eyeballs_attempt(
+        subject,
+        pid,
+        ConnectionOptions(..options, ip_version: Ipv4),
+      )
     },
     True,
   )
   process.start(
     fn() {
-      happy_eyeballs_attempt(subject, pid, ConnectionOptions(..options, ip_version: Ipv6))
+      happy_eyeballs_attempt(
+        subject,
+        pid,
+        ConnectionOptions(..options, ip_version: Ipv6),
+      )
     },
     True,
   )
@@ -187,10 +200,11 @@ fn connect_happy_eyballs(options: ConnectionOptions) -> Result(Socket, Error) {
     Error(_) -> Error(Timeout)
   }
 }
+
 fn happy_eyeballs_attempt(
   subject: process.Subject(Result(Socket, Error)),
   pid: process.Pid,
-  options: ConnectionOptions
+  options: ConnectionOptions,
 ) {
   let res = case connect_single_stack(options) {
     Ok(socket) -> {

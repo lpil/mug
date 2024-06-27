@@ -1,11 +1,11 @@
-import gleam/bytes_builder.{from_string as bits}
 import gleam/bit_array
-import gleam/otp/actor
+import gleam/bytes_builder.{from_string as bits}
 import gleam/erlang/process
+import gleam/option.{None}
+import gleam/otp/actor
 import gleam/string
 import gleeunit
 import gleeunit/should
-import gleam/option.{None}
 import glisten
 import mug
 
