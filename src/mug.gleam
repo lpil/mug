@@ -195,10 +195,11 @@ fn connect_happy_eyballs(options: ConnectionOptions) -> Result(Socket, Error) {
     True,
   )
 
-  case process.receive(subject, options.timeout + 250) {
-    Ok(res) -> res
-    Error(_) -> Error(Timeout)
-  }
+  let selector =
+    process.new_selector()
+    |> process.selecting(subject, fn(res) { res })
+
+  happy_eyeballs_receive(selector, 2)
 }
 
 fn happy_eyeballs_attempt(
@@ -215,6 +216,20 @@ fn happy_eyeballs_attempt(
   }
 
   process.send(subject, res)
+}
+
+fn happy_eyeballs_receive(
+  selector: process.Selector(Result(Socket, Error)),
+  attempts: Int,
+) {
+  case process.select_forever(selector) {
+    Ok(socket) -> Ok(socket)
+    Error(err) ->
+      case attempts {
+        1 -> Error(err)
+        _ -> happy_eyeballs_receive(selector, attempts - 1)
+      }
+  }
 }
 
 fn connect_single_stack(options: ConnectionOptions) -> Result(Socket, Error) {
