@@ -134,6 +134,8 @@ pub fn timeout(
   ConnectionOptions(..options, timeout: timeout)
 }
 
+/// Specify the IP version to use for the connection.
+///
 pub fn ip_version(
   options: ConnectionOptions,
   ip_version: IpVersion
