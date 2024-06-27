@@ -110,19 +110,22 @@ pub type ConnectionOptions {
     /// reached yet.
     timeout: Int,
     /// The IP version to use for the connection.
-    ip_version: IpVersion
+    ip_version: IpVersion,
   )
 }
 
 pub type IpVersion {
   Ipv4
   Ipv6
+  // Happy Eyeballs (RFC 8305) uses both IPv4 and IPv6 to connect, however it
+  // prefers IPv6 if both are available by sending the IPv6 packet first.
+  HappyEyeballs
 }
 
 /// Create a new set of connection options.
 ///
 pub fn new(host: String, port port: Int) -> ConnectionOptions {
-  ConnectionOptions(host: host, port: port, timeout: 1000, ip_version: Ipv4)
+  ConnectionOptions(host: host, port: port, timeout: 1000, ip_version: HappyEyeballs)
 }
 
 /// Specify a timeout for the connection to be established.
@@ -138,7 +141,7 @@ pub fn timeout(
 ///
 pub fn ip_version(
   options: ConnectionOptions,
-  ip_version: IpVersion
+  ip_version: IpVersion,
 ) -> ConnectionOptions {
   ConnectionOptions(..options, ip_version: ip_version)
 }
@@ -154,12 +157,60 @@ pub fn ip_version(
 /// to active mode and receive the next packet as an Erlang message.
 ///
 pub fn connect(options: ConnectionOptions) -> Result(Socket, Error) {
+  case options.ip_version {
+    HappyEyeballs -> connect_happy_eyballs(options)
+    _ -> connect_single_stack(options)
+  }
+}
+
+fn connect_happy_eyballs(options: ConnectionOptions) -> Result(Socket, Error) {
+  let subject = process.new_subject()
+  let pid = process.self()
+
+  process.start(
+    fn() {
+      // 250ms is the suggested delay
+      process.sleep(250)
+      happy_eyeballs_attempt(subject, pid, ConnectionOptions(..options, ip_version: Ipv4))
+    },
+    True,
+  )
+  process.start(
+    fn() {
+      happy_eyeballs_attempt(subject, pid, ConnectionOptions(..options, ip_version: Ipv6))
+    },
+    True,
+  )
+
+  case process.receive(subject, options.timeout + 250) {
+    Ok(res) -> res
+    Error(_) -> Error(Timeout)
+  }
+}
+fn happy_eyeballs_attempt(
+  subject: process.Subject(Result(Socket, Error)),
+  pid: process.Pid,
+  options: ConnectionOptions
+) {
+  let res = case connect_single_stack(options) {
+    Ok(socket) -> {
+      let assert Ok(Nil) = controlling_process(socket, pid)
+      Ok(socket)
+    }
+    Error(err) -> Error(err)
+  }
+
+  process.send(subject, res)
+}
+
+fn connect_single_stack(options: ConnectionOptions) -> Result(Socket, Error) {
   let gen_options = [
     Active(False),
     Mode(Binary),
     case options.ip_version {
       Ipv4 -> Inet
       Ipv6 -> Inet6
+      _ -> panic as "unreachable"
     },
   ]
   let host = charlist.from_string(options.host)
@@ -191,6 +242,9 @@ fn gen_tcp_connect(
   options: List(GenTcpOption),
   timeout: Int,
 ) -> Result(Socket, Error)
+
+@external(erlang, "mug_ffi", "controlling_process")
+fn controlling_process(socket: Socket, pid: process.Pid) -> Result(Nil, Error)
 
 /// Send a packet to the client.
 ///
