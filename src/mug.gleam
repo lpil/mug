@@ -117,9 +117,8 @@ pub type ConnectionOptions {
 pub type IpVersion {
   Ipv4
   Ipv6
-  // Happy Eyeballs (RFC 8305) uses both IPv4 and IPv6 to connect, however it
-  // prefers IPv6 if both are available by sending the IPv6 packet first.
-  HappyEyeballs
+  /// Uses Happy Eyeballs (RFC 8305) to attempt connections on both IPv4 and IPv6
+  Transparent
 }
 
 /// Create a new set of connection options.
@@ -129,7 +128,7 @@ pub fn new(host: String, port port: Int) -> ConnectionOptions {
     host: host,
     port: port,
     timeout: 1000,
-    ip_version: HappyEyeballs,
+    ip_version: Transparent,
   )
 }
 
@@ -163,7 +162,7 @@ pub fn ip_version(
 ///
 pub fn connect(options: ConnectionOptions) -> Result(Socket, Error) {
   case options.ip_version {
-    HappyEyeballs -> connect_happy_eyballs(options)
+    Transparent -> connect_happy_eyballs(options)
     _ -> connect_single_stack(options)
   }
 }
@@ -195,11 +194,9 @@ fn connect_happy_eyballs(options: ConnectionOptions) -> Result(Socket, Error) {
     True,
   )
 
-  let selector =
-    process.new_selector()
-    |> process.selecting(subject, fn(res) { res })
-
-  happy_eyeballs_receive(selector, 2)
+  process.new_selector()
+  |> process.selecting(subject, fn(res) { res })
+  |> happy_eyeballs_receive(2)
 }
 
 fn happy_eyeballs_attempt(
@@ -209,6 +206,8 @@ fn happy_eyeballs_attempt(
 ) {
   let res = case connect_single_stack(options) {
     Ok(socket) -> {
+      // could use process.subject_owner, however there's not really a good
+      // reason to grab the pid multiple times if it can be passed
       let assert Ok(Nil) = controlling_process(socket, pid)
       Ok(socket)
     }
