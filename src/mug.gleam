@@ -198,6 +198,24 @@ pub fn receive(
   gen_tcp_receive(socket, 0, timeout_milliseconds: timeout)
 }
 
+/// Receive the specified number of bytes from the client, unless the socket
+/// was closed, from the other side. In that case, the last read may return
+/// less bytes.
+/// If the specified number of bytes is not available to read from the socket
+/// then the function will block until the bytes are available, or until the
+/// timeout is reached.
+/// This directly calls the underlying Erlang function `gen_tcp:recv/3`.
+///
+/// Errors if the socket is closed, if the timeout is reached, or if there is
+/// some other problem receiving the packet.
+pub fn receive_exact(
+  socket: Socket,
+  byte_size size: Int,
+  timeout_milliseconds timeout: Int,
+) -> Result(BitArray, Error) {
+  gen_tcp_receive(socket, size, timeout_milliseconds: timeout)
+}
+
 @external(erlang, "gen_tcp", "recv")
 fn gen_tcp_receive(
   socket: Socket,

@@ -96,3 +96,17 @@ pub fn active_mode_test() {
   let assert Ok(<<"Hello, Mike!\n":utf8>>) = mug.receive(socket, 0)
   let assert Error(mug.Timeout) = mug.receive(socket, 0)
 }
+
+pub fn exact_bytes_receive_test() {
+  let socket = connect()
+
+  let assert Ok(Nil) = mug.send(socket, <<"Hello":utf8>>)
+  let assert Ok(Nil) = mug.send(socket, <<"World":utf8>>)
+
+  let assert Ok(<<"Hello":utf8>>) = mug.receive_exact(socket, 5, 100)
+  let assert Ok(<<"World":utf8>>) = mug.receive_exact(socket, 5, 100)
+
+  let assert Ok(_) = mug.shutdown(socket)
+
+  let assert Error(mug.Closed) = mug.receive_exact(socket, 5, 100)
+}

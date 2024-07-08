@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.1.0 - Unreleased
+
+- Added `receive_exact` function, to receive specific number of bytes.
+
 ## v1.0.0 - 2024-02-29
 
 - Fixed a bug where invalid domains could cause a crash.
