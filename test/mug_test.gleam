@@ -1,11 +1,11 @@
-import gleam/bytes_builder.{from_string as bits}
 import gleam/bit_array
-import gleam/otp/actor
+import gleam/bytes_builder.{from_string as bits}
 import gleam/erlang/process
+import gleam/option.{None}
+import gleam/otp/actor
 import gleam/string
 import gleeunit
 import gleeunit/should
-import gleam/option.{None}
 import glisten
 import mug
 
@@ -105,6 +105,20 @@ pub fn exact_bytes_receive_test() {
 
   let assert Ok(<<"Hello":utf8>>) = mug.receive_exact(socket, 5, 100)
   let assert Ok(<<"World":utf8>>) = mug.receive_exact(socket, 5, 100)
+
+  let assert Ok(_) = mug.shutdown(socket)
+
+  let assert Error(mug.Closed) = mug.receive_exact(socket, 5, 100)
+}
+
+pub fn exact_bytes_receive_not_enough_test() {
+  let socket = connect()
+
+  let assert Ok(Nil) = mug.send(socket, <<"Hello":utf8>>)
+  let assert Ok(Nil) = mug.send(socket, <<"Worl":utf8>>)
+
+  let assert Ok(<<"Hello":utf8>>) = mug.receive_exact(socket, 5, 100)
+  let assert Error(mug.Timeout) = mug.receive_exact(socket, 5, 100)
 
   let assert Ok(_) = mug.shutdown(socket)
 
