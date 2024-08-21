@@ -1,6 +1,6 @@
 -module(mug_ffi).
 
--export([send/2, shutdown/1]).
+-export([send/2, shutdown/1, coerce/1]).
 
 send(Socket, Packet) ->
     normalise(gen_tcp:send(Socket, Packet)).
@@ -13,3 +13,4 @@ normalise({ok, T}) -> {ok, T};
 normalise({error, {timeout, _}}) -> {error, timeout};
 normalise({error, _} = E) -> E.
 
+coerce(T) -> T.

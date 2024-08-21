@@ -13,5 +13,5 @@ gleam_erlang = "~> 0.22"
 
 [dev-dependencies]
 gleeunit = "~> 1.0"
-glisten = "~> 0.8"
+glisten = "~> 5.0"
 gleam_otp = "~> 0.7"

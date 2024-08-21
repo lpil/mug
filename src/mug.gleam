@@ -282,14 +282,14 @@ fn unsafe_coerce_packet(
   mapper: fn(TcpMessage) -> t,
 ) -> fn(Dynamic, Dynamic) -> t {
   fn(socket, data) {
-    Packet(unsafe_coerce_to_socket(socket), dynamic.unsafe_coerce(data))
+    Packet(unsafe_coerce(socket), unsafe_coerce(data))
     |> mapper
   }
 }
 
 fn unsafe_coerce_closed(mapper: fn(TcpMessage) -> t) -> fn(Dynamic) -> t {
   fn(socket) {
-    SocketClosed(unsafe_coerce_to_socket(socket))
+    SocketClosed(unsafe_coerce(socket))
     |> mapper
   }
 }
@@ -298,13 +298,9 @@ fn unsafe_coerce_to_tcp_error(
   mapper: fn(TcpMessage) -> t,
 ) -> fn(Dynamic, Dynamic) -> t {
   fn(socket, reason) {
-    mapper(TcpError(
-      unsafe_coerce_to_socket(socket),
-      dynamic.unsafe_coerce(reason),
-    ))
+    mapper(TcpError(unsafe_coerce(socket), unsafe_coerce(reason)))
   }
 }
 
-fn unsafe_coerce_to_socket(socket: Dynamic) -> Socket {
-  dynamic.unsafe_coerce(socket)
-}
+@external(erlang, "mug_ffi", "coerce")
+fn unsafe_coerce(data: Dynamic) -> a
