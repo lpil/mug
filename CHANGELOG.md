@@ -1,6 +1,10 @@
 # Changelog
 
-## v1.1.0 - Unreleased
+## v1.1.1 - 2024-08-21
+
+- Updated for gleam_stdlib v0.40.0.
+
+## v1.1.0 - 2024-07-17
 
 - Added `receive_exact` function, to receive specific number of bytes.
 
