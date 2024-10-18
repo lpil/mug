@@ -165,7 +165,7 @@ type ActiveValue {
 type GenTcpOption =
   #(GenTcpOptionName, Dynamic)
 
-@external(erlang, "gen_tcp", "connect")
+@external(erlang, "mug_ffi", "connect")
 fn gen_tcp_connect(
   host: Charlist,
   port: Int,
