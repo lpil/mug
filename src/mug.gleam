@@ -100,6 +100,10 @@ pub type Error {
 pub type ConnectionOptions {
   ConnectionOptions(
     /// The hostname of the server to connect to.
+    ///
+    /// The hostname can be a string with a hostname, IP address or a unix socket
+    /// path. If the hostname starts with `/` or `@` it is treated as a unix socket
+    /// and abstract unix socket respectively.
     host: String,
     /// The port of the server to connect to.
     port: Int,
