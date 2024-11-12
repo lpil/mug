@@ -2,3 +2,5 @@
 *.ez
 build
 erl_crash.dump
+test/certs/*
+!test/certs/gencerts.sh
