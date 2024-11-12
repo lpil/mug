@@ -33,4 +33,29 @@ pub fn main() {
 It also includes support for receiving packages as Erlang messages, enabling
 TCP sockets to be used within OTP actors.
 
+It also has SSL (TLS) support!
+
+```gleam
+import mug
+import mug/ssl
+
+pub fn main() {
+  // Form a connection to a TCP server
+  let assert Ok(socket) =
+    mug.new("erlang-the-movie.example.com", port: 12345)
+    |> mug.timeout(milliseconds: 500)
+    |> ssl.with_ssl()
+    |> ssl.connect()
+
+  // Send a packet to the server
+  let assert Ok(Nil) = ssl.send(socket, <<"Hello, Joe!\n":utf8>>)
+
+  // Receive a packet back
+  let assert Ok(packet) = ssl.receive(socket, timeout_milliseconds: 100)
+  
+  packet
+  // -> <<"Hello, Mike!":utf8>>
+}
+```
+
 Documentation can be found at <https://hexdocs.pm/mug>.
