@@ -5,7 +5,7 @@ description = "A TCP client for Gleam!"
 licences = ["Apache-2.0"]
 repository = { type = "github", user = "lpil", repo = "mug" }
 links = [{ title = "Website", href = "https://gleam.run" }]
-gleam = ">= 0.32.0"
+gleam = ">= 1.0.0"
 
 [dependencies]
 gleam_stdlib = "~> 0.31"
