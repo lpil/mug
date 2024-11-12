@@ -8,20 +8,29 @@ import gleeunit
 import gleeunit/should
 import glisten
 import mug
+import mug_ssl_test.{port as ssl_port}
 
 pub const port = 64_793
 
 pub fn main() {
   // Start an echo TCP server for the tests to use
-  let assert Ok(_) =
+  let handler =
     glisten.handler(fn(_) { #(Nil, None) }, fn(msg, state, conn) {
       let assert glisten.Packet(msg) = msg
       let assert Ok(_) = glisten.send(conn, bytes_builder.from_bit_array(msg))
       actor.continue(state)
     })
-    |> glisten.serve(port)
+  let assert Ok(_) = glisten.serve(handler, port)
+  let assert Ok(_) =
+    glisten.serve_ssl(
+      handler,
+      ssl_port,
+      certfile: "test/certs/server.crt",
+      keyfile: "test/certs/server.key",
+    )
 
   gleeunit.main()
+  // process.sleep_forever()
 }
 
 fn connect() -> mug.Socket {
