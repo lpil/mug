@@ -180,7 +180,7 @@ pub fn send(socket: Socket, packet: BitArray) -> Result(Nil, Error) {
 }
 
 /// Send a packet to the client, the data in `BytesBuilder`. Using this function
-/// is more efficient turning an `BytesBuilder` or a `StringBuilder` into a
+/// is more efficient than turning a `BytesBuilder` or a `StringBuilder` into a
 /// `BitArray` to use with the `send` function.
 ///
 @external(erlang, "mug_ffi", "send")
