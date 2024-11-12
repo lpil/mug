@@ -54,6 +54,11 @@ pub fn with_cacerts(
   SSLConnectionOptions(..options, cacerts: cacerts)
 }
 
+// TODO: Support certs_keys option of [common_option_cert](https://www.erlang.org/doc/apps/ssl/ssl.html#t:common_option_cert/0).
+fn with_certs_keys() {
+  todo as "not implemented"
+}
+
 /// Establish a TLS-encrypted TCP connection to the server specified in the
 /// connection options.
 ///
@@ -78,21 +83,21 @@ pub fn connect(options: SSLConnectionOptions) -> Result(Socket, Error) {
         _ -> VerifyPeer
       }),
     ),
-    ..get_certificates(options.cacerts)
+    ..get_cacerts(options.cacerts)
   ]
   let host = charlist.from_string(options.host)
   use _ <- result.try(ssl_start())
   ssl_connect(host, options.port, tls_options, options.timeout)
 }
 
-fn get_certificates(certs: CaCertificates) -> List(TlsOption) {
-  case certs {
+fn get_cacerts(cacerts: CaCertificates) -> List(TlsOption) {
+  case cacerts {
     NoVerification -> []
-    CustomDerCertificates(certs) -> [#(Cacerts, dynamic.from(certs))]
-    CustomPemCertificates(certs) -> [#(Cacertfile, dynamic.from(certs))]
+    CustomDerCertificates(cacerts) -> [#(Cacerts, dynamic.from(cacerts))]
+    CustomPemCertificates(cacerts) -> [#(Cacertfile, dynamic.from(cacerts))]
     SystemCertificates -> [#(Cacerts, dynamic.from(get_system_cacerts()))]
-    WithSystemCertificatesAnd(certs) -> [
-      #(Cacerts, dynamic.from([get_system_cacerts().0, ..certs])),
+    WithSystemCertificatesAnd(cacerts) -> [
+      #(Cacerts, dynamic.from([get_system_cacerts().0, ..cacerts])),
     ]
   }
 }
