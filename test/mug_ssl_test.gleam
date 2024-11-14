@@ -113,30 +113,31 @@ pub fn active_mode_test() {
   let assert Ok(<<"Hello, Mike!\n":utf8>>) = ssl.receive(socket, 0)
   let assert Error(mug.Timeout) = ssl.receive(socket, 0)
 }
-// pub fn exact_bytes_receive_test() {
-//   let socket = connect()
 
-//   let assert Ok(Nil) = mug.send(socket, <<"Hello":utf8>>)
-//   let assert Ok(Nil) = mug.send(socket, <<"World":utf8>>)
+pub fn exact_bytes_receive_test() {
+  let socket = connect()
 
-//   let assert Ok(<<"Hello":utf8>>) = mug.receive_exact(socket, 5, 100)
-//   let assert Ok(<<"World":utf8>>) = mug.receive_exact(socket, 5, 100)
+  let assert Ok(Nil) = ssl.send(socket, <<"Hello":utf8>>)
+  let assert Ok(Nil) = ssl.send(socket, <<"World":utf8>>)
 
-//   let assert Ok(_) = mug.shutdown(socket)
+  let assert Ok(<<"Hello":utf8>>) = ssl.receive_exact(socket, 5, 100)
+  let assert Ok(<<"World":utf8>>) = ssl.receive_exact(socket, 5, 100)
 
-//   let assert Error(mug.Closed) = mug.receive_exact(socket, 5, 100)
-// }
+  let assert Ok(_) = ssl.shutdown(socket)
 
-// pub fn exact_bytes_receive_not_enough_test() {
-//   let socket = connect()
+  let assert Error(mug.Closed) = ssl.receive_exact(socket, 5, 100)
+}
 
-//   let assert Ok(Nil) = mug.send(socket, <<"Hello":utf8>>)
-//   let assert Ok(Nil) = mug.send(socket, <<"Worl":utf8>>)
+pub fn exact_bytes_receive_not_enough_test() {
+  let socket = connect()
 
-//   let assert Ok(<<"Hello":utf8>>) = mug.receive_exact(socket, 5, 100)
-//   let assert Error(mug.Timeout) = mug.receive_exact(socket, 5, 100)
+  let assert Ok(Nil) = ssl.send(socket, <<"Hello":utf8>>)
+  let assert Ok(Nil) = ssl.send(socket, <<"Worl":utf8>>)
 
-//   let assert Ok(_) = mug.shutdown(socket)
+  let assert Ok(<<"Hello":utf8>>) = ssl.receive_exact(socket, 5, 100)
+  let assert Error(mug.Timeout) = ssl.receive_exact(socket, 5, 100)
 
-//   let assert Error(mug.Closed) = mug.receive_exact(socket, 5, 100)
-// }
+  let assert Ok(_) = ssl.shutdown(socket)
+
+  let assert Error(mug.Closed) = ssl.receive_exact(socket, 5, 100)
+}
