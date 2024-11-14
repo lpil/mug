@@ -80,10 +80,36 @@ pub fn connect(options: SSLConnectionOptions) -> Result(Socket, Error) {
   )
 }
 
+/// Upgrade a plain TCP connection to TLS.
+///
+/// Accepts a TCP socket and performs the client-side TLS handshake. This
+/// may not work on all TCP servers. It uses the system's CA certificates
+/// to perform the handshake by default, and has a default timeout of 1000.
+/// To customise both of these things, use `upgrade3`.
+///
+/// Returns an error if the connection could not be established.
+///
+/// The socket is created in passive mode, meaning the the `receive` function is
+/// to be called to receive packets from the client. The
+/// `receive_next_packet_as_message` function can be used to switch the socket
+/// to active mode and receive the next packet as an Erlang message.
+///
 pub fn upgrade(socket: mug.Socket) {
   upgrade3(socket, SystemCertificates, 1000)
 }
 
+/// Upgrade a plain TCP connection to TLS.
+///
+/// Accepts a TCP socket and performs the client-side TLS handshake. This
+/// may not work on all TCP servers.
+///
+/// Returns an error if the connection could not be established.
+///
+/// The socket is created in passive mode, meaning the the `receive` function is
+/// to be called to receive packets from the client. The
+/// `receive_next_packet_as_message` function can be used to switch the socket
+/// to active mode and receive the next packet as an Erlang message.
+///
 pub fn upgrade3(
   socket: mug.Socket,
   cacerts: CaCertificates,
