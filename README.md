@@ -40,7 +40,7 @@ import mug
 import mug/ssl
 
 pub fn main() {
-  // Form a connection to a TCP server
+  // Form a connection to a TCP+TLS server
   let assert Ok(socket) =
     mug.new("erlang-the-movie.example.com", port: 12345)
     |> mug.timeout(milliseconds: 500)
