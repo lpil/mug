@@ -41,20 +41,21 @@ import mug/ssl
 
 pub fn main() {
   // Form a connection to a TCP+TLS server
-  let assert Ok(socket) =
-    mug.new("erlang-the-movie.example.com", port: 12345)
-    |> mug.timeout(milliseconds: 500)
+  let assert Ok(tcp_socket) =
+    mug.new("example.com", port: 443)  // HTTPS port!
+    |> mug.timeout(milliseconds: 5000)
     |> ssl.with_ssl()
     |> ssl.connect()
 
-  // Send a packet to the server
-  let assert Ok(Nil) = ssl.send(socket, <<"Hello, Joe!\n":utf8>>)
+  // Upgrade the connection
+  let assert Ok(socket) = ssl.upgrade(tcp_socket)
 
-  // Receive a packet back
-  let assert Ok(packet) = ssl.receive(socket, timeout_milliseconds: 100)
-  
-  packet
-  // -> <<"Hello, Mike!":utf8>>
+  // Talk over an encrypted connection!
+  let assert Ok(Nil) =
+    ssl.send(socket, <<"HEAD / HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>)
+  let assert Ok(data) = ssl.receive(socket, 5000)
+  let assert Ok(data) = bit_array.to_string(data)
+  let assert "HTTP/1.1 200 OK\r\n" <> _ = data
 }
 ```
 
@@ -69,19 +70,21 @@ import mug/ssl
 pub fn main() {
   // Form a connection to a TCP server
   let assert Ok(tcp_socket) =
-    mug.new("example.com", port: 443)  // HTTPS port!
+    mug.new("erlang-the-movie-2.example.com", port: 12345)  // HTTPS port!
     |> mug.timeout(milliseconds: 500)
     |> mug.connect()
 
-  // Upgrade the connection
+  // Talk over plain text!
+  let assert Ok(Nil) = mug.send(socket, <<"Hello, Joe!\n":utf8>>)
+  let assert Ok(_) = mug.receive(socket, timeout_milliseconds: 100)
+
+  // Now upgrade the connection
   let assert Ok(socket) = ssl.upgrade(tcp_socket)
 
   // Talk over an encrypted connection!
   let assert Ok(Nil) =
-    ssl.send(socket, <<"HEAD / HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>)
-  let assert Ok(data) = ssl.receive(socket, 5000)
-  let assert Ok(data) = bit_array.to_string(data)
-  let assert "HTTP/1.1 200 OK\r\n" <> _ = data
+    ssl.send(socket, <<"Hello, Joe!\n":utf8>>)
+  let assert Ok(_) = ssl.receive(socket, 5000)
 }
 ```
 
