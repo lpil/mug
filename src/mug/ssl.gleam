@@ -70,7 +70,31 @@ fn with_certs_keys() {
 /// to active mode and receive the next packet as an Erlang message.
 ///
 pub fn connect(options: SSLConnectionOptions) -> Result(Socket, Error) {
-  let tls_options = [
+  let host = charlist.from_string(options.host)
+  use _ <- result.try(ssl_start())
+  ssl_connect(
+    host,
+    options.port,
+    get_tls_options(options.cacerts),
+    options.timeout,
+  )
+}
+
+pub fn upgrade(socket: mug.Socket) {
+  upgrade3(socket, SystemCertificates, 1000)
+}
+
+pub fn upgrade3(
+  socket: mug.Socket,
+  cacerts: CaCertificates,
+  timeout: Int,
+) -> Result(Socket, Error) {
+  use _ <- result.try(ssl_start())
+  ssl_upgrade(socket, get_tls_options(cacerts), timeout)
+}
+
+fn get_tls_options(cacerts: CaCertificates) -> List(#(TlsOptionName, Dynamic)) {
+  [
     // When data is received on the socket queue it in the TCP stack rather than
     // sending it as an Erlang message to the socket owner's inbox.
     #(Active, dynamic.from(False)),
@@ -78,16 +102,13 @@ pub fn connect(options: SSLConnectionOptions) -> Result(Socket, Error) {
     #(Mode, dynamic.from(Binary)),
     #(
       Verify,
-      dynamic.from(case options.cacerts {
+      dynamic.from(case cacerts {
         NoVerification -> VerifyNone
         _ -> VerifyPeer
       }),
     ),
-    ..get_cacerts(options.cacerts)
+    ..get_cacerts(cacerts)
   ]
-  let host = charlist.from_string(options.host)
-  use _ <- result.try(ssl_start())
-  ssl_connect(host, options.port, tls_options, options.timeout)
 }
 
 fn get_cacerts(cacerts: CaCertificates) -> List(TlsOption) {
@@ -142,6 +163,13 @@ fn ssl_start() -> Result(Nil, Error)
 fn ssl_connect(
   host: Charlist,
   port: Int,
+  options: List(TlsOption),
+  timeout: Int,
+) -> Result(Socket, Error)
+
+@external(erlang, "ssl", "connect")
+fn ssl_upgrade(
+  socket: mug.Socket,
   options: List(TlsOption),
   timeout: Int,
 ) -> Result(Socket, Error)
