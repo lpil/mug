@@ -30,7 +30,6 @@ pub fn main() {
     )
 
   gleeunit.main()
-  // process.sleep_forever()
 }
 
 fn connect() -> mug.Socket {
