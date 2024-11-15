@@ -42,16 +42,16 @@ pub type CaCertificates {
   WithSystemCertificatesAnd(cacerts: List(BitArray))
 }
 
-pub fn with_ssl(options: ConnectionOptions) -> SSLConnectionOptions {
+pub fn with_ssl(options: ConnectionOptions) -> SslConnectionOptions {
   let mug.ConnectionOptions(host, port, timeout) = options
-  SSLConnectionOptions(host, port, timeout, cacerts: SystemCertificates)
+  SslConnectionOptions(host, port, timeout, cacerts: SystemCertificates)
 }
 
 pub fn with_cacerts(
-  options: SSLConnectionOptions,
+  options: SslConnectionOptions,
   cacerts: CaCertificates,
-) -> SSLConnectionOptions {
-  SSLConnectionOptions(..options, cacerts: cacerts)
+) -> SslConnectionOptions {
+  SslConnectionOptions(..options, cacerts: cacerts)
 }
 
 // TODO: Support certs_keys option of [common_option_cert](https://www.erlang.org/doc/apps/ssl/ssl.html#t:common_option_cert/0).
@@ -69,7 +69,7 @@ fn with_certs_keys() {
 /// `receive_next_packet_as_message` function can be used to switch the socket
 /// to active mode and receive the next packet as an Erlang message.
 ///
-pub fn connect(options: SSLConnectionOptions) -> Result(Socket, Error) {
+pub fn connect(options: SslConnectionOptions) -> Result(Socket, Error) {
   let host = charlist.from_string(options.host)
   use _ <- result.try(ssl_start())
   ssl_connect(
@@ -78,24 +78,6 @@ pub fn connect(options: SSLConnectionOptions) -> Result(Socket, Error) {
     get_tls_options(options.cacerts),
     options.timeout,
   )
-}
-
-/// Upgrade a plain TCP connection to TLS.
-///
-/// Accepts a TCP socket and performs the client-side TLS handshake. This
-/// may not work on all TCP servers. It uses the system's CA certificates
-/// to perform the handshake by default, and has a default timeout of 1000.
-/// To customise both of these things, use `upgrade3`.
-///
-/// Returns an error if the connection could not be established.
-///
-/// The socket is created in passive mode, meaning the the `receive` function is
-/// to be called to receive packets from the client. The
-/// `receive_next_packet_as_message` function can be used to switch the socket
-/// to active mode and receive the next packet as an Erlang message.
-///
-pub fn upgrade(socket: mug.Socket) {
-  upgrade3(socket, SystemCertificates, 1000)
 }
 
 /// Upgrade a plain TCP connection to TLS.
@@ -110,7 +92,7 @@ pub fn upgrade(socket: mug.Socket) {
 /// `receive_next_packet_as_message` function can be used to switch the socket
 /// to active mode and receive the next packet as an Erlang message.
 ///
-pub fn upgrade3(
+pub fn upgrade(
   socket: mug.Socket,
   cacerts: CaCertificates,
   timeout: Int,
