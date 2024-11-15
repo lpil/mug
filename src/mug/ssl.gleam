@@ -11,8 +11,8 @@ pub type Socket
 
 type DoNotLeak
 
-pub type SSLConnectionOptions {
-  SSLConnectionOptions(
+pub type SslConnectionOptions {
+  SslConnectionOptions(
     host: String,
     port: Int,
     timeout: Int,
