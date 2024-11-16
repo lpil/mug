@@ -6,6 +6,7 @@ import gleam/erlang/process
 import gleam/io
 import gleam/option.{type Option}
 import gleam/result
+import mug.{type Socket as TcpSocket} as _
 
 pub type Socket
 
@@ -270,7 +271,7 @@ pub fn connect(options: SslConnectionOptions) -> Result(Socket, Error) {
 /// The `certs_keys` option can be 
 ///
 pub fn upgrade(
-  socket: mug.Socket,
+  socket: TcpSocket,
   cacerts: CaCertificates,
   certs_keys: List(CertsKeys),
   timeout: Int,
@@ -373,7 +374,7 @@ fn ssl_connect(
 
 @external(erlang, "ssl", "connect")
 fn ssl_upgrade(
-  socket: mug.Socket,
+  socket: TcpSocket,
   options: List(TlsOption),
   timeout: Int,
 ) -> Result(Socket, Error)
