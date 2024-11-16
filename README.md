@@ -36,24 +36,19 @@ TCP sockets to be used within OTP actors.
 It also has SSL (TLS) support!
 
 ```gleam
-import mug
-import mug/ssl
+import mug/ssl as mug
 
 pub fn main() {
   // Form a connection to a TCP+TLS server
-  let assert Ok(tcp_socket) =
+  let assert Ok(socket) =
     mug.new("example.com", port: 443)  // HTTPS port!
     |> mug.timeout(milliseconds: 5000)
-    |> ssl.with_ssl()
-    |> ssl.connect()
-
-  // Upgrade the connection
-  let assert Ok(socket) = ssl.upgrade(tcp_socket)
+    |> mug.connect()
 
   // Talk over an encrypted connection!
   let assert Ok(Nil) =
-    ssl.send(socket, <<"HEAD / HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>)
-  let assert Ok(data) = ssl.receive(socket, 5000)
+    mug.send(socket, <<"HEAD / HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>)
+  let assert Ok(data) = mug.receive(socket, 5000)
   let assert Ok(data) = bit_array.to_string(data)
   let assert "HTTP/1.1 200 OK\r\n" <> _ = data
 }
@@ -70,16 +65,23 @@ import mug/ssl
 pub fn main() {
   // Form a connection to a TCP server
   let assert Ok(tcp_socket) =
-    mug.new("erlang-the-movie-2.example.com", port: 12345)  // HTTPS port!
+    mug.new("erlang-the-movie-2.example.com", port: 12345)
     |> mug.timeout(milliseconds: 500)
     |> mug.connect()
 
   // Talk over plain text!
-  let assert Ok(Nil) = mug.send(socket, <<"Hello, Joe!\n":utf8>>)
+  let assert Ok(Nil) = mug.send(socket, <<"Let's upgrade!\n":utf8>>)
   let assert Ok(_) = mug.receive(socket, timeout_milliseconds: 100)
 
   // Now upgrade the connection
-  let assert Ok(socket) = ssl.upgrade(tcp_socket)
+  let assert Ok(socket) = ssl.upgrade(
+    tcp_socket,
+    // Do not check certificates (Do not use in prod!!)
+    ca_certificates: ssl.NoVerification,
+    // No custom certificates
+    cert_keys: [],
+    timeout: 1000
+  )
 
   // Talk over an encrypted connection!
   let assert Ok(Nil) =
