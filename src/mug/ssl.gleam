@@ -6,21 +6,10 @@ import gleam/erlang/process
 import gleam/io
 import gleam/option.{type Option}
 import gleam/result
-import mug.{type ConnectionOptions}
 
 pub type Socket
 
 type DoNotLeak
-
-pub type SslConnectionOptions {
-  SslConnectionOptions(
-    host: String,
-    port: Int,
-    timeout: Int,
-    cacerts: CaCertificates,
-    certs_keys: List(CertsKeys),
-  )
-}
 
 // https://www.erlang.org/doc/apps/ssl/ssl.html#t:tls_alert/0
 pub type TlsAlert {
@@ -147,6 +136,16 @@ pub type Error {
   Exdev
 }
 
+pub type SslConnectionOptions {
+  SslConnectionOptions(
+    host: String,
+    port: Int,
+    timeout: Int,
+    cacerts: CaCertificates,
+    certs_keys: List(CertsKeys),
+  )
+}
+
 /// The CA certificates to use
 pub type CaCertificates {
   /// Do not verify certificates.
@@ -169,24 +168,6 @@ pub type CaCertificates {
   WithSystemCertificatesAnd(cacerts: List(BitArray))
 }
 
-pub fn with_ssl(options: ConnectionOptions) -> SslConnectionOptions {
-  let mug.ConnectionOptions(host, port, timeout) = options
-  SslConnectionOptions(
-    host,
-    port,
-    timeout,
-    cacerts: SystemCertificates,
-    certs_keys: [],
-  )
-}
-
-pub fn with_cacerts(
-  options: SslConnectionOptions,
-  cacerts cacerts: CaCertificates,
-) -> SslConnectionOptions {
-  SslConnectionOptions(..options, cacerts: cacerts)
-}
-
 pub type CertsKeys {
   /// A list of DER-encoded certificates and their corresponding key.
   DerEncodedCertsKeys(cert: List(BitArray), key: Key)
@@ -203,6 +184,36 @@ pub type Key {
   /// A der-encoded key.  
   /// `alg` is one of 'RSAPrivateKey' | 'DSAPrivateKey' | 'ECPrivateKey' | 'PrivateKeyInfo'.
   DerEncodedKey(alg: String, key: BitArray)
+}
+
+/// Initialise a new SslConnectionOptions record. This function does not establish a connection.
+/// The record can be customized with the various `with_*` functions available.    
+///
+pub fn new(host host: String, port port: Int) -> SslConnectionOptions {
+  SslConnectionOptions(
+    host: host,
+    port: port,
+    timeout: 1000,
+    cacerts: SystemCertificates,
+    certs_keys: [],
+  )
+}
+
+/// Set a timeout for the SSL connection to be established.
+///
+pub fn timeout(opts, milliseconds timeout: Int) {
+  SslConnectionOptions(..opts, timeout: timeout)
+}
+
+/// Set the following CA Certificates for the connection. These CA certificates will be used to check
+/// the TLS server's certificate. It uses the system's CA certificates by default, i.e., all CA certificates
+/// signed by a competent CA will pass validation, while self-signed certificates will not.
+///
+pub fn with_cacerts(
+  options: SslConnectionOptions,
+  cacerts cacerts: CaCertificates,
+) -> SslConnectionOptions {
+  SslConnectionOptions(..options, cacerts: cacerts)
 }
 
 /// Set the certs_keys TLS [common cert option](https://www.erlang.org/doc/apps/ssl/ssl.html#t:common_option_cert/0).  

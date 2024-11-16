@@ -10,8 +10,7 @@ pub const port = 64_794
 
 fn connect() {
   let assert Ok(socket) =
-    mug.new("localhost", port: port)
-    |> ssl.with_ssl()
+    ssl.new("localhost", port: port)
     |> ssl.with_cacerts(ssl.NoVerification)
     |> ssl.connect()
   socket
@@ -26,8 +25,7 @@ pub fn connect_without_ca_test() {
 // FIXME!!
 // pub fn connect_with_custom_ca_test() {
 //   let assert Ok(socket) =
-//     mug.new("localhost", port: port)
-//     |> ssl.with_ssl()
+//     ssl.new("localhost", port: port)
 //     |> ssl.with_cacerts(ssl.CustomPemCertificates("./test/certs/ca.crt"))
 //     |> ssl.connect()
 //     |> io.debug()
@@ -37,8 +35,7 @@ pub fn connect_without_ca_test() {
 // FIXME!!
 // pub fn connect_with_certs_keys_test() {
 //   let assert Ok(_) =
-//     mug.new("localhost", port)
-//     |> ssl.with_ssl()
+//     ssl.new("localhost", port)
 //     |> ssl.with_certs_keys([
 //       ssl.PemEncodedCertsKeys(
 //         "./test/certs/server.crt",
@@ -52,19 +49,17 @@ pub fn connect_without_ca_test() {
 
 pub fn connect_with_system_ca_test() {
   let assert Ok(socket) =
-    mug.new("example.com", port: 443)
-    |> mug.timeout(milliseconds: 10_000)
-    |> ssl.with_ssl()
+    ssl.new("example.com", port: 443)
+    |> ssl.timeout(milliseconds: 10_000)
     |> ssl.connect()
   let assert Ok(_) = ssl.shutdown(socket)
   Nil
 }
 
 pub fn connect_invalid_host_test() {
-  let assert Error(mug.Nxdomain) =
-    mug.new("invalid.example.com", port: port)
-    |> mug.timeout(milliseconds: 500)
-    |> ssl.with_ssl()
+  let assert Error(ssl.Nxdomain) =
+    ssl.new("invalid.example.com", port: port)
+    |> ssl.timeout(milliseconds: 500)
     |> ssl.connect()
 }
 
@@ -99,7 +94,7 @@ pub fn hello_world_test() {
 
   // Nothing has been sent by the echo server yet, so we get a timeout if we try
   // to receive a packet.
-  let assert Error(mug.Timeout) = ssl.receive(socket, timeout_milliseconds: 0)
+  let assert Error(ssl.Timeout) = ssl.receive(socket, timeout_milliseconds: 0)
 
   let assert Ok(Nil) = ssl.send(socket, <<"Hello, Joe!\n":utf8>>)
   let assert Ok(Nil) = ssl.send(socket, <<"Hello, Mike!\n":utf8>>)
@@ -117,10 +112,10 @@ pub fn hello_world_test() {
 
   // if this sleep call does not exist, the below command *sometimes* errors out.
   process.sleep(1)
-  let assert Error(mug.Closed) = ssl.send(socket, <<"One more thing!":utf8>>)
+  let assert Error(ssl.Closed) = ssl.send(socket, <<"One more thing!":utf8>>)
   // the below statement times out if timeout_milliseconds is 0, instead of closing
   // the connection. Probably because of the internal workings of the SSL library.
-  let assert Error(mug.Closed) = ssl.receive(socket, timeout_milliseconds: 1)
+  let assert Error(ssl.Closed) = ssl.receive(socket, timeout_milliseconds: 1)
 }
 
 pub fn active_mode_test() {
@@ -130,7 +125,7 @@ pub fn active_mode_test() {
   ssl.receive_next_packet_as_message(socket)
 
   // The socket is in use, we can't receive from it directly
-  let assert Error(mug.Einval) = ssl.receive(socket, 0)
+  let assert Error(ssl.Einval) = ssl.receive(socket, 0)
 
   // Send a message to the socket
   let assert Ok(Nil) = ssl.send(socket, <<"Hello, Joe!\n":utf8>>)
@@ -153,7 +148,7 @@ pub fn active_mode_test() {
 
   // The socket is back in passive mode, we can receive from it directly again.
   let assert Ok(<<"Hello, Mike!\n":utf8>>) = ssl.receive(socket, 0)
-  let assert Error(mug.Timeout) = ssl.receive(socket, 0)
+  let assert Error(ssl.Timeout) = ssl.receive(socket, 0)
 }
 
 pub fn exact_bytes_receive_test() {
@@ -167,7 +162,7 @@ pub fn exact_bytes_receive_test() {
 
   let assert Ok(_) = ssl.shutdown(socket)
 
-  let assert Error(mug.Closed) = ssl.receive_exact(socket, 5, 100)
+  let assert Error(ssl.Closed) = ssl.receive_exact(socket, 5, 100)
 }
 
 pub fn exact_bytes_receive_not_enough_test() {
@@ -177,9 +172,9 @@ pub fn exact_bytes_receive_not_enough_test() {
   let assert Ok(Nil) = ssl.send(socket, <<"Worl":utf8>>)
 
   let assert Ok(<<"Hello":utf8>>) = ssl.receive_exact(socket, 5, 100)
-  let assert Error(mug.Timeout) = ssl.receive_exact(socket, 5, 100)
+  let assert Error(ssl.Timeout) = ssl.receive_exact(socket, 5, 100)
 
   let assert Ok(_) = ssl.shutdown(socket)
 
-  let assert Error(mug.Closed) = ssl.receive_exact(socket, 5, 100)
+  let assert Error(ssl.Closed) = ssl.receive_exact(socket, 5, 100)
 }
