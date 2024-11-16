@@ -1,9 +1,11 @@
 import gleam/bytes_builder.{type BytesBuilder}
+import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
 import gleam/erlang/atom
 import gleam/erlang/charlist.{type Charlist}
 import gleam/erlang/process
 import gleam/io
+import gleam/option.{type Option}
 import gleam/result
 import mug.{type ConnectionOptions, type Error}
 
@@ -17,6 +19,7 @@ pub type SslConnectionOptions {
     port: Int,
     timeout: Int,
     cacerts: CaCertificates,
+    certs_keys: Option(CertsKeys),
   )
 }
 
@@ -44,7 +47,13 @@ pub type CaCertificates {
 
 pub fn with_ssl(options: ConnectionOptions) -> SslConnectionOptions {
   let mug.ConnectionOptions(host, port, timeout) = options
-  SslConnectionOptions(host, port, timeout, cacerts: SystemCertificates)
+  SslConnectionOptions(
+    host,
+    port,
+    timeout,
+    cacerts: SystemCertificates,
+    certs_keys: option.None,
+  )
 }
 
 pub fn with_cacerts(
@@ -54,9 +63,40 @@ pub fn with_cacerts(
   SslConnectionOptions(..options, cacerts: cacerts)
 }
 
-// TODO: Support certs_keys option of [common_option_cert](https://www.erlang.org/doc/apps/ssl/ssl.html#t:common_option_cert/0).
-fn with_certs_keys() {
-  todo as "not implemented"
+pub type CertsKeys {
+  /// A list of DER-encoded certificates and their corresponding key.
+  DerEncodedCertsKeys(cert: List(BitArray), key: Key)
+  /// Path to a file containing PEM-encoded certificates and their key, with an optional
+  /// password associated with the file containing the key.
+  PemEncodedCertsKeys(
+    certfile: String,
+    keyfile: String,
+    password: Option(BytesBuilder),
+  )
+}
+
+pub type Key {
+  /// A der-encoded key.  
+  /// `alg` is one of 'RSAPrivateKey' | 'DSAPrivateKey' | 'ECPrivateKey' | 'PrivateKeyInfo'.
+  DerEncodedKey(alg: String, key: BitArray)
+}
+
+/// Set the certs_keys TLS [common cert option](https://www.erlang.org/doc/apps/ssl/ssl.html#t:common_option_cert/0).  
+///
+/// The certs_keys can be specified in two ways, a list of der-encoded certificates with their corresponding key, or
+/// the paths to a certfile and keyfile containing one or more PEM-certificates and their corresponding key. A password
+/// may also be specified for the file containing the key. Note that the entity certificate must be the first certificate
+/// in the der-encoded list or the pem-encoded file.
+///
+/// For maximum interoperability, the certificates in the chain should be in the correct order, as the chain will be 
+/// sent as-is to the peer. If chain certificates are not provided, certificates from the configured trusted CA certificates 
+/// will be used to construct the chain.
+///
+pub fn with_certs_keys(
+  ssl_opts: SslConnectionOptions,
+  certs_keys certs_keys: CertsKeys,
+) {
+  SslConnectionOptions(..ssl_opts, certs_keys: option.Some(certs_keys))
 }
 
 /// Establish a TLS-encrypted TCP connection to the server specified in the
@@ -75,7 +115,7 @@ pub fn connect(options: SslConnectionOptions) -> Result(Socket, Error) {
   ssl_connect(
     host,
     options.port,
-    get_tls_options(options.cacerts),
+    get_tls_options(options.cacerts, options.certs_keys),
     options.timeout,
   )
 }
@@ -92,16 +132,22 @@ pub fn connect(options: SslConnectionOptions) -> Result(Socket, Error) {
 /// `receive_next_packet_as_message` function can be used to switch the socket
 /// to active mode and receive the next packet as an Erlang message.
 ///
+/// The `certs_keys` option can be 
+///
 pub fn upgrade(
   socket: mug.Socket,
   cacerts: CaCertificates,
+  certs_keys: Option(CertsKeys),
   timeout: Int,
 ) -> Result(Socket, Error) {
   use _ <- result.try(ssl_start())
-  ssl_upgrade(socket, get_tls_options(cacerts), timeout)
+  ssl_upgrade(socket, get_tls_options(cacerts, certs_keys), timeout)
 }
 
-fn get_tls_options(cacerts: CaCertificates) -> List(#(TlsOptionName, Dynamic)) {
+fn get_tls_options(
+  cacerts: CaCertificates,
+  certs_keys: Option(CertsKeys),
+) -> List(#(TlsOptionName, Dynamic)) {
   [
     // When data is received on the socket queue it in the TCP stack rather than
     // sending it as an Erlang message to the socket owner's inbox.
@@ -117,6 +163,7 @@ fn get_tls_options(cacerts: CaCertificates) -> List(#(TlsOptionName, Dynamic)) {
     ),
     ..get_cacerts(cacerts)
   ]
+  |> add_certs_option(certs_keys)
 }
 
 fn get_cacerts(cacerts: CaCertificates) -> List(TlsOption) {
@@ -128,6 +175,39 @@ fn get_cacerts(cacerts: CaCertificates) -> List(TlsOption) {
     WithSystemCertificatesAnd(cacerts) -> [
       #(Cacerts, dynamic.from([get_system_cacerts().0, ..cacerts])),
     ]
+  }
+}
+
+fn add_certs_option(opts, certs_keys: Option(CertsKeys)) {
+  case certs_keys {
+    option.Some(x) -> [
+      #(
+        CertsKeys,
+        dynamic.from(case x {
+          DerEncodedCertsKeys(cert, key) -> {
+            dict.from_list([
+              #("cert", dynamic.from(cert)),
+              #("key", dynamic.from(key)),
+            ])
+          }
+          PemEncodedCertsKeys(certfile, keyfile, password) -> {
+            dict.from_list([
+              #("certfile", dynamic.from(certfile)),
+              #("keyfile", dynamic.from(keyfile)),
+            ])
+            |> fn(d) {
+              case password {
+                option.Some(password) ->
+                  dict.insert(d, "password", dynamic.from(password))
+                option.None -> d
+              }
+            }
+          }
+        }),
+      ),
+      ..opts
+    ]
+    option.None -> opts
   }
 }
 
@@ -151,6 +231,7 @@ type TlsOptionName {
   Verify
   Cacerts
   Cacertfile
+  CertsKeys
 }
 
 type ModeValue {
