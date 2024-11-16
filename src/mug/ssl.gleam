@@ -1,5 +1,4 @@
 import gleam/bytes_builder.{type BytesBuilder}
-import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
 import gleam/erlang/atom
 import gleam/erlang/charlist.{type Charlist}
@@ -19,7 +18,7 @@ pub type SslConnectionOptions {
     port: Int,
     timeout: Int,
     cacerts: CaCertificates,
-    certs_keys: Option(CertsKeys),
+    certs_keys: List(CertsKeys),
   )
 }
 
@@ -52,7 +51,7 @@ pub fn with_ssl(options: ConnectionOptions) -> SslConnectionOptions {
     port,
     timeout,
     cacerts: SystemCertificates,
-    certs_keys: option.None,
+    certs_keys: [],
   )
 }
 
@@ -71,7 +70,7 @@ pub type CertsKeys {
   PemEncodedCertsKeys(
     certfile: String,
     keyfile: String,
-    password: Option(BytesBuilder),
+    password: Option(BitArray),
   )
 }
 
@@ -94,9 +93,9 @@ pub type Key {
 ///
 pub fn with_certs_keys(
   ssl_opts: SslConnectionOptions,
-  certs_keys certs_keys: CertsKeys,
+  certs_keys certs_keys: List(CertsKeys),
 ) {
-  SslConnectionOptions(..ssl_opts, certs_keys: option.Some(certs_keys))
+  SslConnectionOptions(..ssl_opts, certs_keys: certs_keys)
 }
 
 /// Establish a TLS-encrypted TCP connection to the server specified in the
@@ -137,7 +136,7 @@ pub fn connect(options: SslConnectionOptions) -> Result(Socket, Error) {
 pub fn upgrade(
   socket: mug.Socket,
   cacerts: CaCertificates,
-  certs_keys: Option(CertsKeys),
+  certs_keys: List(CertsKeys),
   timeout: Int,
 ) -> Result(Socket, Error) {
   use _ <- result.try(ssl_start())
@@ -146,7 +145,7 @@ pub fn upgrade(
 
 fn get_tls_options(
   cacerts: CaCertificates,
-  certs_keys: Option(CertsKeys),
+  certs_keys: List(CertsKeys),
 ) -> List(#(TlsOptionName, Dynamic)) {
   [
     // When data is received on the socket queue it in the TCP stack rather than
@@ -163,7 +162,15 @@ fn get_tls_options(
     ),
     ..get_cacerts(cacerts)
   ]
-  |> add_certs_option(certs_keys)
+  |> fn(opts) {
+    case certs_keys {
+      [] -> opts
+      [certs_keys, ..] -> [
+        #(CertsKeys, dynamic.from([certs_keys_to_erl(certs_keys)])),
+        ..opts
+      ]
+    }
+  }
 }
 
 fn get_cacerts(cacerts: CaCertificates) -> List(TlsOption) {
@@ -178,38 +185,10 @@ fn get_cacerts(cacerts: CaCertificates) -> List(TlsOption) {
   }
 }
 
-fn add_certs_option(opts, certs_keys: Option(CertsKeys)) {
-  case certs_keys {
-    option.Some(x) -> [
-      #(
-        CertsKeys,
-        dynamic.from(case x {
-          DerEncodedCertsKeys(cert, key) -> {
-            dict.from_list([
-              #("cert", dynamic.from(cert)),
-              #("key", dynamic.from(key)),
-            ])
-          }
-          PemEncodedCertsKeys(certfile, keyfile, password) -> {
-            dict.from_list([
-              #("certfile", dynamic.from(certfile)),
-              #("keyfile", dynamic.from(keyfile)),
-            ])
-            |> fn(d) {
-              case password {
-                option.Some(password) ->
-                  dict.insert(d, "password", dynamic.from(password))
-                option.None -> d
-              }
-            }
-          }
-        }),
-      ),
-      ..opts
-    ]
-    option.None -> opts
-  }
-}
+type ErlCertsKeys
+
+@external(erlang, "mug_ffi", "get_certs_keys")
+fn certs_keys_to_erl(certs_keys: CertsKeys) -> ErlCertsKeys
 
 /// Adapted from https://www.erlang.org/doc/apps/public_key/public_key#t:combined_cert/0
 type CombinedCert =
