@@ -9,6 +9,7 @@ import mug/ssl
 pub const port = 64_794
 
 fn connect() {
+  let assert Ok(_) = ssl.start()
   let assert Ok(socket) =
     ssl.new("localhost", port: port)
     |> ssl.with_cacerts(ssl.NoVerification)
@@ -24,6 +25,7 @@ pub fn connect_without_ca_test() {
 
 // FIXME!!
 // pub fn connect_with_custom_ca_test() {
+//   let assert Ok(_) = ssl.start()
 //   let assert Ok(socket) =
 //     ssl.new("localhost", port: port)
 //     |> ssl.with_cacerts(ssl.CustomPemCertificates("./test/certs/ca.crt"))
@@ -34,6 +36,7 @@ pub fn connect_without_ca_test() {
 
 // FIXME!!
 // pub fn connect_with_certs_keys_test() {
+//   let assert Ok(_) = ssl.start()
 //   let assert Ok(_) =
 //     ssl.new("localhost", port)
 //     |> ssl.with_certs_keys([
@@ -48,6 +51,7 @@ pub fn connect_without_ca_test() {
 // }
 
 pub fn connect_with_system_ca_test() {
+  let assert Ok(_) = ssl.start()
   let assert Ok(socket) =
     ssl.new("example.com", port: 443)
     |> ssl.timeout(milliseconds: 10_000)
@@ -57,6 +61,7 @@ pub fn connect_with_system_ca_test() {
 }
 
 pub fn connect_invalid_host_test() {
+  let assert Ok(_) = ssl.start()
   let assert Error(ssl.Nxdomain) =
     ssl.new("invalid.example.com", port: port)
     |> ssl.timeout(milliseconds: 500)
@@ -67,6 +72,7 @@ pub fn upgrade_test() {
   let assert Ok(tcp_socket) =
     mug.new("localhost", port: port)
     |> mug.connect()
+  let assert Ok(_) = ssl.start()
   let assert Ok(socket) = ssl.upgrade(tcp_socket, ssl.NoVerification, [], 1000)
   let assert Ok(Nil) = ssl.send(socket, <<"Hello, Joe!\n":utf8>>)
   let assert Ok(data) = ssl.receive(socket, 500)
@@ -79,6 +85,7 @@ pub fn upgrade_with_system_ca_test() {
   let assert Ok(tcp_socket) =
     mug.new("example.com", port: 443)
     |> mug.connect()
+  let assert Ok(_) = ssl.start()
   let assert Ok(socket) = ssl.upgrade(tcp_socket, ssl.NoVerification, [], 5000)
   let assert Ok(Nil) =
     ssl.send(socket, <<"HEAD / HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>)

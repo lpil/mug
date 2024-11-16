@@ -5,7 +5,6 @@ import gleam/erlang/charlist.{type Charlist}
 import gleam/erlang/process
 import gleam/io
 import gleam/option.{type Option}
-import gleam/result
 import mug.{type Socket as TcpSocket} as _
 
 pub type Socket
@@ -48,6 +47,9 @@ pub type TlsAlert {
 pub type Error {
   Closed
   Timeout
+
+  /// The application was not started with `ssl_start`
+  SslNotStarted
 
   // For connect only
   /// An invalid option was passed
@@ -247,7 +249,6 @@ pub fn with_certs_keys(
 ///
 pub fn connect(options: SslConnectionOptions) -> Result(Socket, Error) {
   let host = charlist.from_string(options.host)
-  use _ <- result.try(ssl_start())
   ssl_connect(
     host,
     options.port,
@@ -276,7 +277,6 @@ pub fn upgrade(
   certs_keys: List(CertsKeys),
   timeout: Int,
 ) -> Result(Socket, Error) {
-  use _ <- result.try(ssl_start())
   ssl_upgrade(socket, get_tls_options(cacerts, certs_keys), timeout)
 }
 
@@ -361,8 +361,34 @@ type ActiveValue {
 type TlsOption =
   #(TlsOptionName, Dynamic)
 
+/// Starts the SSL application. This function should be called before using any methods in the `mug/ssl` module. 
+/// This function is idempotent, since it calls erlang's [`application:ensure_all_started`](https://www.erlang.org/doc/apps/kernel/application.html#ensure_all_started/1)
+/// method, which only starts the App if it is stopped, and does nothing if it is already started.
+///
+/// The application is started as a `temporary` application, meaning that if it terminates, the death is reported,
+/// but the Erlang node continues as usual. To start the application as `permanent` or `transient`, you can use
+/// the `ssl_start_as` function.
+///
 @external(erlang, "mug_ffi", "ssl_start")
-fn ssl_start() -> Result(Nil, Error)
+pub fn start() -> Result(Nil, Dynamic)
+
+pub type OtpApplicationType {
+  /// If the application terminates, the death is only reported.
+  Temporary
+  /// If the application terminates, all other applications and the erlang node itself are killed.
+  Permanent
+  /// If the application terminates with a reason of `normal`, the death is only reported.
+  /// If it terminates for any other reason, all other applications and the erlang node 
+  /// itself are killed.
+  Transient
+}
+
+@external(erlang, "mug_ffi", "ssl_start")
+pub fn start_as(app_type: OtpApplicationType) -> Result(Nil, Dynamic)
+
+/// Stops the SSL application.
+@external(erlang, "mug_ffi", "ssl_stop")
+pub fn stop() -> Result(Nil, Dynamic)
 
 @external(erlang, "ssl", "connect")
 fn ssl_connect(
