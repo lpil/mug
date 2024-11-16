@@ -6,7 +6,7 @@ import gleam/erlang/process
 import gleam/io
 import gleam/option.{type Option}
 import gleam/result
-import mug.{type ConnectionOptions, type Error}
+import mug.{type ConnectionOptions}
 
 pub type Socket
 
@@ -20,6 +20,131 @@ pub type SslConnectionOptions {
     cacerts: CaCertificates,
     certs_keys: List(CertsKeys),
   )
+}
+
+// https://www.erlang.org/doc/apps/ssl/ssl.html#t:tls_alert/0
+pub type TlsAlert {
+  CloseNotify
+  UnexpectedMessage
+  BadRecordMac
+  RecordOverflow
+  HandshakeFailure
+  BadCertificate
+  UnsupportedCertificate
+  CertificateRevoked
+  CertificateExpired
+  CertificateUnknown
+  IllegalParameter
+  UnknownCa
+  AccessDenied
+  DecodeError
+  DecryptError
+  ExportRestriction
+  ProtocolVersion
+  InsufficientSecurity
+  InternalError
+  InappropriateFallback
+  UserCanceled
+  NoRenegotiation
+  UnsupportedExtension
+  CertificateUnobtainable
+  UnrecognizedName
+  BadCertificateStatusResponse
+  BadCertificateHashValue
+  UnknownPskIdentity
+  NoApplicationProtocol
+}
+
+pub type Error {
+  Closed
+  Timeout
+
+  // For connect only
+  /// An invalid option was passed
+  Options(opt: Dynamic)
+
+  /// TLS connection failed
+  TlsAlert(alert: TlsAlert, description: String)
+
+  // https://www.erlang.org/doc/man/inet#type-posix
+  Eaddrinuse
+  Eaddrnotavail
+  Eafnosupport
+  Ealready
+  Econnaborted
+  Econnrefused
+  Econnreset
+  Edestaddrreq
+  Ehostdown
+  Ehostunreach
+  Einprogress
+  Eisconn
+  Emsgsize
+  Enetdown
+  Enetunreach
+  Enopkg
+  Enoprotoopt
+  Enotconn
+  Enotty
+  Enotsock
+  Eproto
+  Eprotonosupport
+  Eprototype
+  Esocktnosupport
+  Etimedout
+  Ewouldblock
+  Exbadport
+  Exbadseq
+  Nxdomain
+
+  // https://www.erlang.org/doc/man/file#type-posix
+  Eacces
+  Eagain
+  Ebadf
+  Ebadmsg
+  Ebusy
+  Edeadlk
+  Edeadlock
+  Edquot
+  Eexist
+  Efault
+  Efbig
+  Eftype
+  Eintr
+  Einval
+  Eio
+  Eisdir
+  Eloop
+  Emfile
+  Emlink
+  Emultihop
+  Enametoolong
+  Enfile
+  Enobufs
+  Enodev
+  Enolck
+  Enolink
+  Enoent
+  Enomem
+  Enospc
+  Enosr
+  Enostr
+  Enosys
+  Enotblk
+  Enotdir
+  Enotsup
+  Enxio
+  Eopnotsupp
+  Eoverflow
+  Eperm
+  Epipe
+  Erange
+  Erofs
+  Espipe
+  Esrch
+  Estale
+  Etxtbsy
+  Exdev
 }
 
 /// The CA certificates to use
