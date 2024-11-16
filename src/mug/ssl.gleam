@@ -49,7 +49,7 @@ pub fn with_ssl(options: ConnectionOptions) -> SslConnectionOptions {
 
 pub fn with_cacerts(
   options: SslConnectionOptions,
-  cacerts: CaCertificates,
+  cacerts cacerts: CaCertificates,
 ) -> SslConnectionOptions {
   SslConnectionOptions(..options, cacerts: cacerts)
 }
