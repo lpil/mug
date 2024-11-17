@@ -390,7 +390,7 @@ pub fn start_as(app_type: OtpApplicationType) -> Result(Nil, Dynamic)
 @external(erlang, "mug_ffi", "ssl_stop")
 pub fn stop() -> Result(Nil, Dynamic)
 
-@external(erlang, "ssl", "connect")
+@external(erlang, "mug_ffi", "ssl_connect")
 fn ssl_connect(
   host: Charlist,
   port: Int,
@@ -398,7 +398,7 @@ fn ssl_connect(
   timeout: Int,
 ) -> Result(Socket, Error)
 
-@external(erlang, "ssl", "connect")
+@external(erlang, "mug_ffi", "ssl_connect")
 fn ssl_upgrade(
   socket: TcpSocket,
   options: List(TlsOption),

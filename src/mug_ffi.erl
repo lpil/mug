@@ -14,6 +14,11 @@ ssl_start() ->
 ssl_shutdown(Socket) ->
     normalise(ssl:shutdown(Socket, read_write)).
 
+ssl_connect(Socket, Options, Timeout) ->
+    normalise(ssl:connect(Socket, Options, Timeout)).
+ssl_connect(Host, Port, Options, Timeout) ->
+    normalise(ssl:connect(Host, Port, Options, Timeout)).
+
 ssl_send(Socket, Packet) ->
     normalise(ssl:send(Socket, Packet)).
 
@@ -30,6 +35,7 @@ get_certs_keys(CertsKeys) ->
 normalise(ok) -> {ok, nil};
 normalise({ok, T}) -> {ok, T};
 normalise({error, {timeout, _}}) -> {error, timeout};
+normalise({error, {tls_alert, {Alert, Description}}}) -> {error, {tls_alert, Alert, list_to_binary(Description)}};
 normalise({error, _} = E) -> E.
 
 coerce(T) -> T.
