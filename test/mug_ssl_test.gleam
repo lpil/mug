@@ -1,6 +1,7 @@
 import gleam/bit_array
 import gleam/bytes_builder.{from_string as bits}
 import gleam/erlang/process
+import gleam/option
 import gleam/string
 import gleeunit/should
 import mug
@@ -12,7 +13,7 @@ fn connect() {
   let assert Ok(_) = ssl.start()
   let assert Ok(socket) =
     ssl.new("localhost", port: port)
-    |> ssl.with_cacerts(ssl.NoVerification)
+    |> ssl.no_verification()
     |> ssl.connect()
   socket
 }
@@ -24,31 +25,30 @@ pub fn connect_without_ca_test() {
 }
 
 // FIXME!!
-// pub fn connect_with_custom_ca_test() {
-//   let assert Ok(_) = ssl.start()
-//   let assert Ok(socket) =
-//     ssl.new("localhost", port: port)
-//     |> ssl.with_cacerts(ssl.CustomPemCertificates("./test/certs/ca.crt"))
-//     |> ssl.connect()
-//     |> io.debug()
-//   Nil
-// }
+pub fn connect_with_custom_ca_test() {
+  let assert Ok(_) = ssl.start()
+  let assert Ok(socket) =
+    ssl.new("localhost", port: port)
+    |> ssl.cacerts(ssl.PemEncodedCaCertificates("./test/certs/ca.crt"))
+    |> ssl.connect()
+  let assert Ok(_) = ssl.shutdown(socket)
+}
 
 // FIXME!!
-// pub fn connect_with_certs_keys_test() {
-//   let assert Ok(_) = ssl.start()
-//   let assert Ok(_) =
-//     ssl.new("localhost", port)
-//     |> ssl.with_certs_keys([
-//       ssl.PemEncodedCertsKeys(
-//         "./test/certs/server.crt",
-//         "./test/certs/server.key",
-//         option.Some(<<"hi":utf8>>),
-//       ),
-//     ])
-//     |> ssl.connect()
-//   Nil
-// }
+pub fn connect_with_certs_keys_test() {
+  let assert Ok(_) = ssl.start()
+  let assert Ok(socket) =
+    ssl.new("localhost", port)
+    |> ssl.certs_keys([
+      ssl.PemEncodedCertsKeys(
+        "./test/certs/server.crt",
+        "./test/certs/server.key",
+        option.None,
+      ),
+    ])
+    |> ssl.connect()
+  let assert Ok(_) = ssl.shutdown(socket)
+}
 
 pub fn connect_with_system_ca_test() {
   let assert Ok(_) = ssl.start()
@@ -73,7 +73,7 @@ pub fn upgrade_test() {
     mug.new("localhost", port: port)
     |> mug.connect()
   let assert Ok(_) = ssl.start()
-  let assert Ok(socket) = ssl.upgrade(tcp_socket, ssl.NoVerification, [], 1000)
+  let assert Ok(socket) = ssl.upgrade(tcp_socket, ssl.NoVerification, 1000)
   let assert Ok(Nil) = ssl.send(socket, <<"Hello, Joe!\n":utf8>>)
   let assert Ok(data) = ssl.receive(socket, 500)
   should.equal(data, <<"Hello, Joe!\n":utf8>>)
@@ -86,7 +86,7 @@ pub fn upgrade_with_system_ca_test() {
     mug.new("example.com", port: 443)
     |> mug.connect()
   let assert Ok(_) = ssl.start()
-  let assert Ok(socket) = ssl.upgrade(tcp_socket, ssl.NoVerification, [], 5000)
+  let assert Ok(socket) = ssl.upgrade(tcp_socket, ssl.NoVerification, 5000)
   let assert Ok(Nil) =
     ssl.send(socket, <<"HEAD / HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>)
   let assert Ok(data) = ssl.receive(socket, 5000)

@@ -1,6 +1,6 @@
 -module(mug_ffi).
 
--export([send/2, shutdown/1, coerce/1, ssl_start/0, ssl_shutdown/1, ssl_send/2, get_certs_keys/1]).
+-export([send/2, shutdown/1, coerce/1, ssl_start/0, ssl_shutdown/1, ssl_connect/3, ssl_connect/4, ssl_send/2, get_certs_keys/1, ssl_downgrade/2]).
 
 send(Socket, Packet) ->
     normalise(gen_tcp:send(Socket, Packet)).
@@ -30,6 +30,14 @@ get_certs_keys(CertsKeys) ->
             #{ certfile => Certfile, keyfile => Keyfile };
         {pem_encoded_certs_keys, Certfile, Keyfile, {some, Password}} ->
             #{ certfile => Certfile, keyfile => Keyfile, password => Password }
+    end.
+
+ssl_downgrade(Socket, Timeout) ->
+    case ssl:close(Socket, Timeout) of
+        ok -> {error, closed};
+        {ok, Port} -> {ok, {Port, nil}};
+        {ok, Port, Data} -> {ok, {Port, {some, Data}}};
+        {error, _} = E -> E
     end.
 
 normalise(ok) -> {ok, nil};

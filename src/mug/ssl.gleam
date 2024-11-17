@@ -4,7 +4,8 @@ import gleam/erlang/atom
 import gleam/erlang/charlist.{type Charlist}
 import gleam/erlang/process
 import gleam/io
-import gleam/option.{type Option}
+import gleam/list
+import gleam/option.{type Option, None, Some}
 import mug.{type Socket as TcpSocket} as _
 
 pub type Socket
@@ -144,31 +145,42 @@ pub type SslConnectionOptions {
     host: String,
     port: Int,
     timeout: Int,
-    cacerts: CaCertificates,
+    certificates: Certificates,
+  )
+}
+
+/// The certificates to use 
+pub type Certificates {
+  /// Uses these CA certificates and regular certificates to verify the server's certificate.
+  ///
+  /// The `use_system_cacerts` option makes mug use the system's CA certificates, which are 
+  /// usually set to a group of competent CAs who sign most of the web's certificates.  
+  /// You may specifiy your own CA certificates with the `cacerts` option, and custom
+  /// certificates and their keys with the `certs_keys` option.
+  ///
+  /// Note that specifying a PEM encoded CA certificate file will result in the system CA
+  /// certificates not being used. This is because of how the underlying [erlang implementation](https://www.erlang.org/doc/apps/ssl/ssl.html#t:client_option/0)
+  /// works. System CA certificates are passed as DER-encoded certificates, and DER encoded
+  /// certs override PEM-encoded ones. Therefore, if you wish to use a PEM encoded CA cert along
+  /// with the system's CA, you should decode the PEM into a DER using (`public_key:pem_decode`)[https://www.erlang.org/doc/apps/public_key/public_key.html#pem-api]
+  /// and use the DerEncodedCaCertificates variant instead.
+  Certificates(
+    use_system_cacerts: Bool,
+    cacerts: Option(CaCertificates),
     certs_keys: List(CertsKeys),
   )
+  /// Do not verify certificates. While this does allow you to use self-signed certificates,
+  /// it is highly recommended to not skip verification, and add a custom CA instead.
+  NoVerification
 }
 
 /// The CA certificates to use
 pub type CaCertificates {
-  /// Do not verify certificates.
-  NoVerification
-  /// Use these der-encoded certificates as CA certificates. This will make mug not use
-  /// the system's CA certificates, but only these ones. To use the system's certificates
-  /// and custom ones, use the `WithSystemCertificatesAnd` variant instead.
-  CustomDerCertificates(cacerts: List(BitArray))
-  /// Path to a pem-encoded file which contains CA certificates. This will make mug not use
-  /// the system's CA certificates, but only these ones. To use the system's certificates
-  /// and custom ones, use the `WithSystemCertificatesAnd` variant instead.
-  CustomPemCertificates(cacertfile: String)
-  /// Use the system's CA certificates, as provided by erlang's `cacerts_get/0` function
-  /// from the `public_key` module ([docs](https://www.erlang.org/doc/apps/public_key/public_key#cacerts_get/0)).
-  SystemCertificates
-  /// Use the system's certificates, along with `cacerts` more, which is a list of
-  /// der-encoded CA certificates as BitArrays. A pem-file cannot be used with this option
-  /// because der-encoded certs have a higher priority over pem-encoded cert files, and the
-  /// `cacerts_get/0` function returns der-encoded certs.
-  WithSystemCertificatesAnd(cacerts: List(BitArray))
+  /// Use these der-encoded certificates as CA certificates.
+  DerEncodedCaCertificates(cacerts: List(BitArray))
+  /// Path to a pem-encoded file which contains CA certificates.
+  /// If this option is specified, then the system CA will not be used.
+  PemEncodedCaCertificates(cacertfile: String)
 }
 
 pub type CertsKeys {
@@ -190,15 +202,15 @@ pub type Key {
 }
 
 /// Initialise a new SslConnectionOptions record. This function does not establish a connection.
-/// The record can be customized with the various `with_*` functions available.    
+/// It sets a default timeout of 1000, and uses the system's CA certificates to verify the TLS
+/// server's certificate.
 ///
 pub fn new(host host: String, port port: Int) -> SslConnectionOptions {
   SslConnectionOptions(
     host: host,
     port: port,
     timeout: 1000,
-    cacerts: SystemCertificates,
-    certs_keys: [],
+    certificates: Certificates(True, None, []),
   )
 }
 
@@ -208,15 +220,34 @@ pub fn timeout(opts, milliseconds timeout: Int) {
   SslConnectionOptions(..opts, timeout: timeout)
 }
 
-/// Set the following CA Certificates for the connection. These CA certificates will be used to check
-/// the TLS server's certificate. It uses the system's CA certificates by default, i.e., all CA certificates
-/// signed by a competent CA will pass validation, while self-signed certificates will not.
+/// Do not verify certificates. This is dangerous. It is recommended to use a custom CA instead.
 ///
-pub fn with_cacerts(
+pub fn no_verification(opts) {
+  SslConnectionOptions(..opts, certificates: NoVerification)
+}
+
+/// Set the following CA Certificates for the connection. These CA certificates will be used to check
+/// the TLS server's certificate. If a PEM-encoded CA certfile is provided, the system's CA will not
+/// be used.
+///
+/// If `NoVerification` is set, this function does nothing.
+///
+pub fn cacerts(
   options: SslConnectionOptions,
   cacerts cacerts: CaCertificates,
 ) -> SslConnectionOptions {
-  SslConnectionOptions(..options, cacerts: cacerts)
+  SslConnectionOptions(
+    ..options,
+    certificates: case options.certificates {
+      Certificates(system, certs_keys: certs_keys, ..) ->
+        Certificates(
+          use_system_cacerts: system,
+          cacerts: Some(cacerts),
+          certs_keys: certs_keys,
+        )
+      NoVerification -> NoVerification
+    },
+  )
 }
 
 /// Set the certs_keys TLS [common cert option](https://www.erlang.org/doc/apps/ssl/ssl.html#t:common_option_cert/0).  
@@ -230,11 +261,24 @@ pub fn with_cacerts(
 /// sent as-is to the peer. If chain certificates are not provided, certificates from the configured trusted CA certificates 
 /// will be used to construct the chain.
 ///
-pub fn with_certs_keys(
-  ssl_opts: SslConnectionOptions,
+/// If `NoVerification` is set, this function does nothing.
+///
+pub fn certs_keys(
+  options: SslConnectionOptions,
   certs_keys certs_keys: List(CertsKeys),
 ) {
-  SslConnectionOptions(..ssl_opts, certs_keys: certs_keys)
+  SslConnectionOptions(
+    ..options,
+    certificates: case options.certificates {
+      Certificates(system, cacerts: cacerts, ..) ->
+        Certificates(
+          use_system_cacerts: system,
+          cacerts: cacerts,
+          certs_keys: certs_keys,
+        )
+      NoVerification -> NoVerification
+    },
+  )
 }
 
 /// Establish a TLS-encrypted TCP connection to the server specified in the
@@ -252,7 +296,7 @@ pub fn connect(options: SslConnectionOptions) -> Result(Socket, Error) {
   ssl_connect(
     host,
     options.port,
-    get_tls_options(options.cacerts, options.certs_keys),
+    get_tls_options(options.certificates),
     options.timeout,
   )
 }
@@ -273,16 +317,19 @@ pub fn connect(options: SslConnectionOptions) -> Result(Socket, Error) {
 ///
 pub fn upgrade(
   socket: TcpSocket,
-  cacerts: CaCertificates,
-  certs_keys: List(CertsKeys),
-  timeout: Int,
+  certificates certificates: Certificates,
+  milliseconds timeout: Int,
 ) -> Result(Socket, Error) {
-  ssl_upgrade(socket, get_tls_options(cacerts, certs_keys), timeout)
+  ssl_upgrade(socket, get_tls_options(certificates), timeout)
+}
+
+/// Use system certificates
+pub fn system_cacerts() {
+  Certificates(True, None, [])
 }
 
 fn get_tls_options(
-  cacerts: CaCertificates,
-  certs_keys: List(CertsKeys),
+  certificates: Certificates,
 ) -> List(#(TlsOptionName, Dynamic)) {
   [
     // When data is received on the socket queue it in the TCP stack rather than
@@ -292,33 +339,41 @@ fn get_tls_options(
     #(Mode, dynamic.from(Binary)),
     #(
       Verify,
-      dynamic.from(case cacerts {
+      dynamic.from(case certificates {
         NoVerification -> VerifyNone
         _ -> VerifyPeer
       }),
     ),
-    ..get_cacerts(cacerts)
   ]
   |> fn(opts) {
-    case certs_keys {
-      [] -> opts
-      [certs_keys, ..] -> [
-        #(CertsKeys, dynamic.from([certs_keys_to_erl(certs_keys)])),
+    case certificates {
+      NoVerification -> [#(Verify, dynamic.from(VerifyNone)), ..opts]
+      Certificates(system, cacerts: cacerts, certs_keys: certs_keys) -> [
+        #(Verify, dynamic.from(VerifyPeer)),
+        get_cacerts(system, cacerts),
+        #(CertsKeys, dynamic.from(list.map(certs_keys, certs_keys_to_erl))),
         ..opts
       ]
     }
   }
 }
 
-fn get_cacerts(cacerts: CaCertificates) -> List(TlsOption) {
-  case cacerts {
-    NoVerification -> []
-    CustomDerCertificates(cacerts) -> [#(Cacerts, dynamic.from(cacerts))]
-    CustomPemCertificates(cacerts) -> [#(Cacertfile, dynamic.from(cacerts))]
-    SystemCertificates -> [#(Cacerts, dynamic.from(get_system_cacerts()))]
-    WithSystemCertificatesAnd(cacerts) -> [
-      #(Cacerts, dynamic.from([get_system_cacerts().0, ..cacerts])),
-    ]
+fn get_cacerts(system: Bool, cacerts: Option(CaCertificates)) -> TlsOption {
+  case system, cacerts {
+    False, Some(DerEncodedCaCertificates(cacerts)) -> #(
+      Cacerts,
+      dynamic.from(cacerts),
+    )
+    True, Some(DerEncodedCaCertificates(cacerts)) -> #(
+      Cacerts,
+      dynamic.from(list.concat([get_system_cacerts().0, cacerts])),
+    )
+    _, Some(PemEncodedCaCertificates(cacerts)) -> #(
+      Cacertfile,
+      dynamic.from(cacerts),
+    )
+    True, None -> #(Cacerts, dynamic.from(get_system_cacerts()))
+    False, None -> #(Cacerts, dynamic.from([]))
   }
 }
 
@@ -329,7 +384,7 @@ fn certs_keys_to_erl(certs_keys: CertsKeys) -> ErlCertsKeys
 
 /// Adapted from https://www.erlang.org/doc/apps/public_key/public_key#t:combined_cert/0
 type CombinedCert =
-  #(BitArray, #(Dynamic, Dynamic, Dynamic))
+  #(List(BitArray), #(Dynamic, Dynamic, Dynamic))
 
 @external(erlang, "public_key", "cacerts_get")
 fn get_system_cacerts() -> CombinedCert
@@ -459,6 +514,22 @@ fn ssl_receive(
 ///
 @external(erlang, "mug_ffi", "ssl_shutdown")
 pub fn shutdown(socket: Socket) -> Result(Nil, Error)
+
+/// Attempts to downgrade the connection. If downgrade is not successful, the socket is closed.
+///
+/// On successful downgrade, it returns the downgraded TCP socket, and *optionally* some binary data
+/// that must be treated as the first bytes received on the downgraded connection.  
+/// If the connection gets closed instead of getting downgraded, then the `Closed` error is returned.  
+/// 
+/// Internally, it uses [`ssl:close/2`](https://www.erlang.org/doc/apps/ssl/ssl.html#close/2) 
+/// to perform the downgrade, which returns `ok` if the socket is closed, while this function returns
+/// an error. It is recommended against using this function to close the socket. Use `shutdown` instead.
+///
+@external(erlang, "mug_ffi", "ssl_downgrade")
+pub fn downgrade(
+  socket: Socket,
+  milliseconds timeout: Int,
+) -> Result(#(TcpSocket, Option(BitArray)), Error)
 
 /// Switch the socket to active mode, meaning that the next packet received on
 /// the socket will be sent as an Erlang message to the socket owner's inbox.
