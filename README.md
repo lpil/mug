@@ -59,6 +59,7 @@ applications which negotiate over plain TCP first, and then upgrade to an
 encrypted connection (for example SMTP).
 
 ```gleam
+import gleam/option.{Some}
 import mug
 import mug/ssl
 
@@ -77,16 +78,33 @@ pub fn main() {
   let assert Ok(socket) = ssl.upgrade(
     tcp_socket,
     // Do not check certificates (Do not use in prod!!)
-    ca_certificates: ssl.NoVerification,
-    // No custom certificates
-    cert_keys: [],
-    timeout: 1000
+    ssl.NoVerification,
+    // Timeout after 1000 millis
+    milliseconds: 1000
   )
 
   // Talk over an encrypted connection!
   let assert Ok(Nil) =
     ssl.send(socket, <<"Hello, Joe!\n":utf8>>)
   let assert Ok(_) = ssl.receive(socket, 5000)
+
+  // Downgrade to an unencrypted connection
+  case ssl.downgrade(socket, milliseconds: 1000) {
+    Error(ssl.Closed) -> {
+      // Downgrade failed, so the connection was closed.
+      Nil
+    }
+    Ok(#(tcp_socket, data)) -> {
+      // `data` is the first piece of data received (if any)
+      // after downgrade
+      let assert Some(_) = data
+      let assert Ok(Nil) = mug.send(socket, <<"Scary unencrypted connection!\n":utf8>>)
+    }
+    Error(_) -> {
+      // Downgrade failed for other reasons
+      Nil
+    }
+  }
 }
 ```
 
