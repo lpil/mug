@@ -39,6 +39,8 @@ It also has SSL (TLS) support!
 import mug/ssl as mug
 
 pub fn main() {
+  // Either depend on the `ssl` application in `gleam.toml`, or run:
+  ssl.start()
   // Form a connection to a TCP+TLS server
   let assert Ok(socket) =
     mug.new("example.com", port: 443)  // HTTPS port!
