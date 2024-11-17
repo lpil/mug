@@ -49,7 +49,9 @@ pub type Error {
   Closed
   Timeout
 
-  /// The application was not started with `ssl_start`
+  /// The `ssl` application was not started/depended upon.
+  /// Either call `tls.start()` before calling any TLS methods, or (better yet) depend on the `ssl`
+  /// erlang application in [`gleam.toml`](https://gleam.run/writing-gleam/gleam-toml/).
   SslNotStarted
 
   // For connect only
@@ -140,8 +142,8 @@ pub type Error {
   Exdev
 }
 
-pub type SslConnectionOptions {
-  SslConnectionOptions(
+pub type TlsConnectionOptions {
+  TlsConnectionOptions(
     host: String,
     port: Int,
     timeout: Int,
@@ -201,12 +203,12 @@ pub type Key {
   DerEncodedKey(alg: String, key: BitArray)
 }
 
-/// Initialise a new SslConnectionOptions record. This function does not establish a connection.
+/// Initialise a new TlsConnectionOptions record. This function does not establish a connection.
 /// It sets a default timeout of 1000, and uses the system's CA certificates to verify the TLS
 /// server's certificate.
 ///
-pub fn new(host host: String, port port: Int) -> SslConnectionOptions {
-  SslConnectionOptions(
+pub fn new(host host: String, port port: Int) -> TlsConnectionOptions {
+  TlsConnectionOptions(
     host: host,
     port: port,
     timeout: 1000,
@@ -214,16 +216,16 @@ pub fn new(host host: String, port port: Int) -> SslConnectionOptions {
   )
 }
 
-/// Set a timeout for the SSL connection to be established.
+/// Set a timeout for the TLS connection to be established.
 ///
 pub fn timeout(opts, milliseconds timeout: Int) {
-  SslConnectionOptions(..opts, timeout: timeout)
+  TlsConnectionOptions(..opts, timeout: timeout)
 }
 
 /// Do not verify certificates. This is dangerous. It is recommended to use a custom CA instead.
 ///
 pub fn no_verification(opts) {
-  SslConnectionOptions(..opts, certificates: NoVerification)
+  TlsConnectionOptions(..opts, certificates: NoVerification)
 }
 
 /// Set the following CA Certificates for the connection. These CA certificates will be used to check
@@ -233,10 +235,10 @@ pub fn no_verification(opts) {
 /// If `NoVerification` is set, this function does nothing.
 ///
 pub fn cacerts(
-  options: SslConnectionOptions,
+  options: TlsConnectionOptions,
   cacerts cacerts: CaCertificates,
-) -> SslConnectionOptions {
-  SslConnectionOptions(
+) -> TlsConnectionOptions {
+  TlsConnectionOptions(
     ..options,
     certificates: case options.certificates {
       Certificates(system, certs_keys: certs_keys, ..) ->
@@ -264,10 +266,10 @@ pub fn cacerts(
 /// If `NoVerification` is set, this function does nothing.
 ///
 pub fn certs_keys(
-  options: SslConnectionOptions,
+  options: TlsConnectionOptions,
   certs_keys certs_keys: List(CertsKeys),
 ) {
-  SslConnectionOptions(
+  TlsConnectionOptions(
     ..options,
     certificates: case options.certificates {
       Certificates(system, cacerts: cacerts, ..) ->
@@ -291,7 +293,7 @@ pub fn certs_keys(
 /// `receive_next_packet_as_message` function can be used to switch the socket
 /// to active mode and receive the next packet as an Erlang message.
 ///
-pub fn connect(options: SslConnectionOptions) -> Result(Socket, Error) {
+pub fn connect(options: TlsConnectionOptions) -> Result(Socket, Error) {
   let host = charlist.from_string(options.host)
   ssl_connect(
     host,

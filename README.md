@@ -36,11 +36,11 @@ TCP sockets to be used within OTP actors.
 It also has SSL (TLS) support!
 
 ```gleam
-import mug/ssl as mug
+import mug/tls as mug
 
 pub fn main() {
   // Either depend on the `ssl` application in `gleam.toml`, or run:
-  ssl.start()
+  mug.start()
   // Form a connection to a TCP+TLS server
   let assert Ok(socket) =
     mug.new("example.com", port: 443)  // HTTPS port!
@@ -63,7 +63,7 @@ encrypted connection (for example SMTP).
 ```gleam
 import gleam/option.{Some}
 import mug
-import mug/ssl
+import mug/tls
 
 pub fn main() {
   // Form a connection to a TCP server
@@ -77,22 +77,22 @@ pub fn main() {
   let assert Ok(_) = mug.receive(socket, timeout_milliseconds: 100)
 
   // Now upgrade the connection
-  let assert Ok(socket) = ssl.upgrade(
+  let assert Ok(socket) = tls.upgrade(
     tcp_socket,
     // Do not check certificates (Do not use in prod!!)
-    ssl.NoVerification,
+    tls.NoVerification,
     // Timeout after 1000 millis
     milliseconds: 1000
   )
 
   // Talk over an encrypted connection!
   let assert Ok(Nil) =
-    ssl.send(socket, <<"Hello, Joe!\n":utf8>>)
-  let assert Ok(_) = ssl.receive(socket, 5000)
+    tls.send(socket, <<"Hello, Joe!\n":utf8>>)
+  let assert Ok(_) = tls.receive(socket, 5000)
 
   // Downgrade to an unencrypted connection
-  case ssl.downgrade(socket, milliseconds: 1000) {
-    Error(ssl.Closed) -> {
+  case tls.downgrade(socket, milliseconds: 1000) {
+    Error(tls.Closed) -> {
       // Downgrade failed, so the connection was closed.
       Nil
     }
