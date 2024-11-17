@@ -228,6 +228,25 @@ pub fn no_verification(opts) {
   TlsConnectionOptions(..opts, certificates: NoVerification)
 }
 
+/// Do not use system CA Certificates.
+///
+/// If `NoVerification` is set, this function does nothing.
+///
+pub fn no_system_cacerts(options) {
+  TlsConnectionOptions(
+    ..options,
+    certificates: case options.certificates {
+      Certificates(cacerts: cacerts, certs_keys: certs_keys, ..) ->
+        Certificates(
+          use_system_cacerts: False,
+          cacerts: cacerts,
+          certs_keys: certs_keys,
+        )
+      NoVerification -> NoVerification
+    },
+  )
+}
+
 /// Set the following CA Certificates for the connection. These CA certificates will be used to check
 /// the TLS server's certificate. If a PEM-encoded CA certfile is provided, the system's CA will not
 /// be used.
@@ -325,9 +344,9 @@ pub fn upgrade(
   ssl_upgrade(socket, get_tls_options(certificates), timeout)
 }
 
-/// Use system certificates
-pub fn system_cacerts() {
-  Certificates(True, None, [])
+/// Whether to use system certificates or not.
+pub fn use_system_cacerts(system: Bool) {
+  Certificates(system, None, [])
 }
 
 fn get_tls_options(

@@ -60,6 +60,16 @@ pub fn connect_with_system_ca_test() {
   Nil
 }
 
+pub fn connect_without_system_ca_test() {
+  let assert Ok(_) = tls.start()
+  let assert Error(tls.TlsAlert(tls.UnknownCa, _)) =
+    tls.new("gleam.run", port: 443)
+    |> tls.no_system_cacerts()
+    |> tls.timeout(milliseconds: 10_000)
+    |> tls.connect()
+  Nil
+}
+
 pub fn connect_invalid_host_test() {
   let assert Ok(_) = tls.start()
   let assert Error(tls.Nxdomain) =
