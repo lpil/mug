@@ -3,7 +3,6 @@ import gleam/dynamic.{type Dynamic}
 import gleam/erlang/atom
 import gleam/erlang/charlist.{type Charlist}
 import gleam/erlang/process
-import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import mug.{type Socket as TcpSocket} as _
@@ -565,7 +564,6 @@ pub fn downgrade(
 ///
 pub fn receive_next_packet_as_message(socket: Socket) -> Nil {
   set_socket_options(socket, [#(Active, dynamic.from(Once))])
-  |> io.debug()
   Nil
 }
 
