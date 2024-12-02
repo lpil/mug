@@ -22,10 +22,13 @@ find . -maxdepth 1 -type f ! -name 'gencerts.sh' -delete
 # yes '' | openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -sha256 -days 3650 -nodes
 
 echo "Generating the CA certificate and key..."
-yes '' | openssl req -x509 -new -nodes -keyout ca.key -out ca.crt -sha256 -days 3650
-echo "Generating the certificate key and request..."
-yes '' | openssl req -newkey rsa:4096 -keyout server.key -out server.csr -nodes
+openssl genrsa -out ca.key 4096
+openssl req -x509 -new -nodes -key ca.key -out ca.crt -days 3650 -subj '/C=XX/ST=XX/L=XX/O=XX/OU=XX/CN=localhost'
+echo "Generating the certificate key..."
+openssl genrsa -out server.key 4096
+echo "Generating the certificate request..."
+openssl req -new -key server.key -out server.csr -addext "subjectAltName=DNS:localhost" -subj '/C=XX/ST=XX/L=XX/O=XX/OU=XX/CN=localhost'
 echo "Generating the certificate..."
-openssl x509 -req -in server.csr -outform pem -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt -days 3650 -sha256
+openssl x509 -req -days 365 -in server.csr -outform pem -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt -days 3650 -copy_extensions copy
 
 popd
