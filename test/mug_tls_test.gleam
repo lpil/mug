@@ -18,7 +18,7 @@ fn connect() {
   socket
 }
 
-pub fn connect_without_ca_test() {
+pub fn connect_without_verification_test() {
   let socket = connect()
   let assert Ok(_) = tls.shutdown(socket)
   Nil
@@ -30,15 +30,7 @@ pub fn connect_with_custom_ca_test() {
   let assert Ok(socket) =
     tls.new("localhost", port: port)
     |> tls.cacerts(tls.PemEncodedCaCertificates("./test/certs/ca.crt"))
-    |> tls.connect()
-  let assert Ok(_) = tls.shutdown(socket)
-}
-
-// FIXME!!
-pub fn connect_with_certs_keys_test() {
-  let assert Ok(_) = tls.start()
-  let assert Ok(socket) =
-    tls.new("localhost", port)
+    |> tls.no_system_cacerts()
     |> tls.certs_keys([
       tls.PemEncodedCertsKeys(
         "./test/certs/server.crt",
