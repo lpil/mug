@@ -5,6 +5,7 @@ import gleam/erlang/charlist.{type Charlist}
 import gleam/erlang/process
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/string
 import mug.{type Socket as TcpSocket} as _
 
 pub type Socket
@@ -390,7 +391,7 @@ fn get_cacerts(system: Bool, cacerts: Option(CaCertificates)) -> TlsOption {
     )
     _, Some(PemEncodedCaCertificates(cacerts)) -> #(
       Cacertfile,
-      dynamic.from(cacerts),
+      dynamic.from(string.to_utf_codepoints(cacerts)),
     )
     True, None -> #(Cacerts, dynamic.from(get_system_cacerts()))
     False, None -> #(Cacerts, dynamic.from([]))

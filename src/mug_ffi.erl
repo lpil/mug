@@ -25,11 +25,11 @@ ssl_send(Socket, Packet) ->
 get_certs_keys(CertsKeys) ->
     case CertsKeys of
         {der_encoded_certs_keys, Cert, Key} ->
-            #{ cert => Cert, key => Key };
+            #{ cert => unicode:characters_to_list(Cert), key => unicode:characters_to_list(Key) };
         {pem_encoded_certs_keys, Certfile, Keyfile, none} ->
-            #{ certfile => Certfile, keyfile => Keyfile };
+            #{ certfile => unicode:characters_to_list(Certfile), keyfile => unicode:characters_to_list(Keyfile) };
         {pem_encoded_certs_keys, Certfile, Keyfile, {some, Password}} ->
-            #{ certfile => Certfile, keyfile => Keyfile, password => Password }
+            #{ certfile => unicode:characters_to_list(Certfile), keyfile => unicode:characters_to_list(Keyfile), password => unicode:characters_to_list(Password) }
     end.
 
 ssl_downgrade(Socket, Timeout) ->
@@ -46,4 +46,4 @@ normalise({error, {timeout, _}}) -> {error, timeout};
 normalise({error, {tls_alert, {Alert, Description}}}) -> {error, {tls_alert, Alert, list_to_binary(Description)}};
 normalise({error, _} = E) -> E.
 
-coerce(T) -> T.
+coerce(T) -> T.w
