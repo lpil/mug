@@ -1,4 +1,4 @@
-import gleam/bytes_builder.{type BytesBuilder}
+import gleam/bytes_tree.{type BytesTree}
 import gleam/dynamic.{type Dynamic}
 import gleam/erlang/atom
 import gleam/erlang/charlist.{type Charlist}
@@ -176,7 +176,7 @@ fn gen_tcp_connect(
 /// Send a packet to the client.
 ///
 pub fn send(socket: Socket, packet: BitArray) -> Result(Nil, Error) {
-  send_builder(socket, bytes_builder.from_bit_array(packet))
+  send_builder(socket, bytes_tree.from_bit_array(packet))
 }
 
 /// Send a packet to the client, the data in `BytesBuilder`. Using this function
@@ -184,7 +184,7 @@ pub fn send(socket: Socket, packet: BitArray) -> Result(Nil, Error) {
 /// `BitArray` to use with the `send` function.
 ///
 @external(erlang, "mug_ffi", "send")
-pub fn send_builder(socket: Socket, packet: BytesBuilder) -> Result(Nil, Error)
+pub fn send_builder(socket: Socket, packet: BytesTree) -> Result(Nil, Error)
 
 /// Receive a packet from the client.
 ///

@@ -1,5 +1,5 @@
 import gleam/bit_array
-import gleam/bytes_builder.{from_string as bits}
+import gleam/bytes_tree.{from_string as bits}
 import gleam/erlang/process
 import gleam/option.{None}
 import gleam/otp/actor
@@ -16,7 +16,7 @@ pub fn main() {
   let assert Ok(_) =
     glisten.handler(fn(_) { #(Nil, None) }, fn(msg, state, conn) {
       let assert glisten.Packet(msg) = msg
-      let assert Ok(_) = glisten.send(conn, bytes_builder.from_bit_array(msg))
+      let assert Ok(_) = glisten.send(conn, bytes_tree.from_bit_array(msg))
       actor.continue(state)
     })
     |> glisten.serve(port)
