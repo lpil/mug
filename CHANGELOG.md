@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.2.0 - 2024-12-04
+
+- Updated for gleam_stdlib v0.44.0.
+
 ## v1.1.1 - 2024-08-21
 
 - Updated for gleam_stdlib v0.40.0.

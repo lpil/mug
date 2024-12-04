@@ -1,5 +1,5 @@
 name = "mug"
-version = "1.1.1"
+version = "1.2.0"
 
 description = "A TCP client for Gleam!"
 licences = ["Apache-2.0"]
@@ -8,10 +8,10 @@ links = [{ title = "Website", href = "https://gleam.run" }]
 gleam = ">= 1.0.0"
 
 [dependencies]
-gleam_stdlib = "~> 0.31"
-gleam_erlang = "~> 0.22"
+gleam_stdlib = ">= 0.44.0 and < 2.0.0"
+gleam_erlang = ">= 0.22.0 and < 1.0.0"
 
 [dev-dependencies]
-gleeunit = "~> 1.0"
-glisten = "~> 5.0"
-gleam_otp = "~> 0.7"
+gleeunit = ">= 1.2.0 and < 2.0.0"
+gleam_otp = ">= 0.14.1 and < 1.0.0"
+glisten = ">= 6.0.0 and < 7.0.0"
