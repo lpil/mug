@@ -1,4 +1,4 @@
-import gleam/bytes_builder.{type BytesBuilder}
+import gleam/bytes_tree.{type BytesTree}
 import gleam/dynamic.{type Dynamic}
 import gleam/erlang/atom
 import gleam/erlang/charlist.{type Charlist}
@@ -387,7 +387,7 @@ fn get_cacerts(system: Bool, cacerts: Option(CaCertificates)) -> TlsOption {
     )
     True, Some(DerEncodedCaCertificates(cacerts)) -> #(
       Cacerts,
-      dynamic.from(list.concat([get_system_cacerts().0, cacerts])),
+      dynamic.from(list.flatten([get_system_cacerts().0, cacerts])),
     )
     _, Some(PemEncodedCaCertificates(cacerts)) -> #(
       Cacertfile,
@@ -484,7 +484,7 @@ fn ssl_upgrade(
 /// Send a packet to the client.
 ///
 pub fn send(socket: Socket, packet: BitArray) -> Result(Nil, Error) {
-  send_builder(socket, bytes_builder.from_bit_array(packet))
+  send_builder(socket, bytes_tree.from_bit_array(packet))
 }
 
 /// Send a packet to the client, the data in `BytesBuilder`. Using this function
@@ -492,7 +492,7 @@ pub fn send(socket: Socket, packet: BitArray) -> Result(Nil, Error) {
 /// `BitArray` to use with the `send` function.
 ///
 @external(erlang, "mug_ffi", "ssl_send")
-pub fn send_builder(socket: Socket, packet: BytesBuilder) -> Result(Nil, Error)
+pub fn send_builder(socket: Socket, packet: BytesTree) -> Result(Nil, Error)
 
 /// Receive a packet from the client.
 ///
