@@ -352,7 +352,7 @@ pub fn use_system_cacerts(system: Bool) {
 fn get_tls_options(
   certificates: Certificates,
 ) -> List(#(TlsOptionName, Dynamic)) {
-  [
+  let opts = [
     // When data is received on the socket queue it in the TCP stack rather than
     // sending it as an Erlang message to the socket owner's inbox.
     #(Active, dynamic.from(False)),
@@ -366,16 +366,14 @@ fn get_tls_options(
       }),
     ),
   ]
-  |> fn(opts) {
-    case certificates {
-      NoVerification -> [#(Verify, dynamic.from(VerifyNone)), ..opts]
-      Certificates(system, cacerts: cacerts, certs_keys: certs_keys) -> [
-        #(Verify, dynamic.from(VerifyPeer)),
-        get_cacerts(system, cacerts),
-        #(CertsKeys, dynamic.from(list.map(certs_keys, certs_keys_to_erl))),
-        ..opts
-      ]
-    }
+  case certificates {
+    NoVerification -> [#(Verify, dynamic.from(VerifyNone)), ..opts]
+    Certificates(system, cacerts: cacerts, certs_keys: certs_keys) -> [
+      #(Verify, dynamic.from(VerifyPeer)),
+      get_cacerts(system, cacerts),
+      #(CertsKeys, dynamic.from(list.map(certs_keys, certs_keys_to_erl))),
+      ..opts
+    ]
   }
 }
 
