@@ -36,11 +36,14 @@ TCP sockets to be used within OTP actors.
 It also has SSL (TLS) support!
 
 ```gleam
+// Make sure you depend on the `ssl` application in `gleam.toml`!
+// This can be done by adding `ssl` to the list of `extra_applications` under the
+// erlang key in the `gleam.toml` file.
+// More info here: https://gleam.run/writing-gleam/gleam-toml/
+
 import mug/tls as mug
 
 pub fn main() {
-  // Either depend on the `ssl` application in `gleam.toml`, or run:
-  mug.start()
   // Form a connection to a TCP+TLS server
   let assert Ok(socket) =
     mug.new("example.com", port: 443)  // HTTPS port!
