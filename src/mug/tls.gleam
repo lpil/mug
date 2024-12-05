@@ -147,12 +147,12 @@ pub type TlsConnectionOptions {
     host: String,
     port: Int,
     timeout: Int,
-    certificates: Certificates,
+    verification: VerificationMethod,
   )
 }
 
 /// The certificates to use 
-pub type Certificates {
+pub type VerificationMethod {
   /// Uses these CA certificates and regular certificates to verify the server's certificate.
   ///
   /// The `use_system_cacerts` option makes mug use the system's CA certificates, which are 
@@ -212,7 +212,7 @@ pub fn new(host host: String, port port: Int) -> TlsConnectionOptions {
     host: host,
     port: port,
     timeout: 1000,
-    certificates: Certificates(True, None, []),
+    verification: Certificates(True, None, []),
   )
 }
 
@@ -225,7 +225,7 @@ pub fn timeout(opts, milliseconds timeout: Int) {
 /// Do not verify certificates. This is dangerous. It is recommended to use a custom CA instead.
 ///
 pub fn no_verification(opts) {
-  TlsConnectionOptions(..opts, certificates: NoVerification)
+  TlsConnectionOptions(..opts, verification: NoVerification)
 }
 
 /// Do not use system CA Certificates.
@@ -235,7 +235,7 @@ pub fn no_verification(opts) {
 pub fn no_system_cacerts(options) {
   TlsConnectionOptions(
     ..options,
-    certificates: case options.certificates {
+    verification: case options.verification {
       Certificates(cacerts: cacerts, certs_keys: certs_keys, ..) ->
         Certificates(
           use_system_cacerts: False,
@@ -259,7 +259,7 @@ pub fn cacerts(
 ) -> TlsConnectionOptions {
   TlsConnectionOptions(
     ..options,
-    certificates: case options.certificates {
+    verification: case options.verification {
       Certificates(system, certs_keys: certs_keys, ..) ->
         Certificates(
           use_system_cacerts: system,
@@ -290,7 +290,7 @@ pub fn certs_keys(
 ) {
   TlsConnectionOptions(
     ..options,
-    certificates: case options.certificates {
+    verification: case options.verification {
       Certificates(system, cacerts: cacerts, ..) ->
         Certificates(
           use_system_cacerts: system,
@@ -317,7 +317,7 @@ pub fn connect(options: TlsConnectionOptions) -> Result(Socket, Error) {
   ssl_connect(
     host,
     options.port,
-    get_tls_options(options.certificates),
+    get_tls_options(options.verification),
     options.timeout,
   )
 }
@@ -338,7 +338,7 @@ pub fn connect(options: TlsConnectionOptions) -> Result(Socket, Error) {
 ///
 pub fn upgrade(
   socket: TcpSocket,
-  certificates certificates: Certificates,
+  certificates certificates: VerificationMethod,
   milliseconds timeout: Int,
 ) -> Result(Socket, Error) {
   ssl_upgrade(socket, get_tls_options(certificates), timeout)
@@ -350,7 +350,7 @@ pub fn use_system_cacerts(system: Bool) {
 }
 
 fn get_tls_options(
-  certificates: Certificates,
+  certificates: VerificationMethod,
 ) -> List(#(TlsOptionName, Dynamic)) {
   let opts = [
     // When data is received on the socket queue it in the TCP stack rather than
