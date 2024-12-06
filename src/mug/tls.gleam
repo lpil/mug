@@ -171,9 +171,9 @@ pub type VerificationMethod {
     cacerts: Option(CaCertificates),
     certs_keys: List(CertsKeys),
   )
-  /// Do not verify certificates. While this does allow you to use self-signed certificates,
-  /// it is highly recommended to not skip verification, and add a custom CA instead.
-  NoVerification
+  /// Do not verify certificates. While this does allow you to use self-signed certificates.
+  /// It is highly recommended to not skip verification, add a custom CA instead.
+  DangerouslyDisableVerification
 }
 
 /// The CA certificates to use
@@ -224,8 +224,8 @@ pub fn timeout(opts, milliseconds timeout: Int) {
 
 /// Do not verify certificates. This is dangerous. It is recommended to use a custom CA instead.
 ///
-pub fn no_verification(opts) {
-  TlsConnectionOptions(..opts, verification: NoVerification)
+pub fn dangerously_disable_verification(opts) {
+  TlsConnectionOptions(..opts, verification: DangerouslyDisableVerification)
 }
 
 /// Do not use system CA Certificates.
@@ -242,7 +242,7 @@ pub fn no_system_cacerts(options) {
           cacerts: cacerts,
           certs_keys: certs_keys,
         )
-      NoVerification -> NoVerification
+      DangerouslyDisableVerification -> DangerouslyDisableVerification
     },
   )
 }
@@ -266,7 +266,7 @@ pub fn cacerts(
           cacerts: Some(cacerts),
           certs_keys: certs_keys,
         )
-      NoVerification -> NoVerification
+      DangerouslyDisableVerification -> DangerouslyDisableVerification
     },
   )
 }
@@ -297,7 +297,7 @@ pub fn certs_keys(
           cacerts: cacerts,
           certs_keys: certs_keys,
         )
-      NoVerification -> NoVerification
+      DangerouslyDisableVerification -> DangerouslyDisableVerification
     },
   )
 }
@@ -361,13 +361,16 @@ fn get_tls_options(
     #(
       Verify,
       dynamic.from(case certificates {
-        NoVerification -> VerifyNone
+        DangerouslyDisableVerification -> VerifyNone
         _ -> VerifyPeer
       }),
     ),
   ]
   case certificates {
-    NoVerification -> [#(Verify, dynamic.from(VerifyNone)), ..opts]
+    DangerouslyDisableVerification -> [
+      #(Verify, dynamic.from(VerifyNone)),
+      ..opts
+    ]
     Certificates(system, cacerts: cacerts, certs_keys: certs_keys) -> [
       #(Verify, dynamic.from(VerifyPeer)),
       get_cacerts(system, cacerts),

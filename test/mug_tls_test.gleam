@@ -1,7 +1,6 @@
 import gleam/bit_array
 import gleam/bytes_tree.{from_string as bits}
 import gleam/erlang/process
-import gleam/option
 import gleam/string
 import gleeunit/should
 import mug
@@ -13,7 +12,7 @@ fn connect() {
   let assert Ok(_) = tls.start()
   let assert Ok(socket) =
     tls.new("localhost", port: port)
-    |> tls.no_verification()
+    |> tls.dangerously_disable_verification()
     |> tls.connect()
   socket
 }
@@ -57,7 +56,8 @@ pub fn upgrade_test() {
     mug.new("localhost", port: port)
     |> mug.connect()
   let assert Ok(_) = tls.start()
-  let assert Ok(socket) = tls.upgrade(tcp_socket, tls.NoVerification, 1000)
+  let assert Ok(socket) =
+    tls.upgrade(tcp_socket, tls.DangerouslyDisableVerification, 1000)
   let assert Ok(Nil) = tls.send(socket, <<"Hello, Joe!\n":utf8>>)
   let assert Ok(data) = tls.receive(socket, 500)
   should.equal(data, <<"Hello, Joe!\n":utf8>>)
@@ -70,7 +70,8 @@ pub fn upgrade_with_system_ca_test() {
     mug.new("example.com", port: 443)
     |> mug.connect()
   let assert Ok(_) = tls.start()
-  let assert Ok(socket) = tls.upgrade(tcp_socket, tls.NoVerification, 5000)
+  let assert Ok(socket) =
+    tls.upgrade(tcp_socket, tls.DangerouslyDisableVerification, 5000)
   let assert Ok(Nil) =
     tls.send(socket, <<"HEAD / HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>)
   let assert Ok(data) = tls.receive(socket, 5000)
