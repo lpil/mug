@@ -1,10 +1,12 @@
 import gleam/bytes_tree.{type BytesTree}
 import gleam/dynamic.{type Dynamic}
+import gleam/erlang
 import gleam/erlang/atom
 import gleam/erlang/charlist.{type Charlist}
 import gleam/erlang/process
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import gleam/result
 import gleam/string
 import mug.{type Socket as TcpSocket} as _
 
@@ -53,6 +55,11 @@ pub type Error {
   /// Either call `tls.start()` before calling any TLS methods, or (better yet) depend on the `ssl`
   /// erlang application in [`gleam.toml`](https://gleam.run/writing-gleam/gleam-toml/).
   SslNotStarted
+
+  /// Unable to get the OS supplied CA certificates. This error is only returned if the
+  /// `use_system_cacerts` option is set to `true` and the system's CA certificates
+  /// could not be retrieved.
+  SystemCacertificatesGetError
 
   // For connect only
   /// An invalid option was passed
@@ -314,12 +321,11 @@ pub fn certs_keys(
 ///
 pub fn connect(options: TlsConnectionOptions) -> Result(Socket, Error) {
   let host = charlist.from_string(options.host)
-  ssl_connect(
-    host,
-    options.port,
-    get_tls_options(options.verification),
-    options.timeout,
-  )
+  let opts =
+    erlang.rescue(fn() { get_tls_options(options.verification) })
+    |> result.map_error(fn(_) { SystemCacertificatesGetError })
+  use opts <- result.try(opts)
+  ssl_connect(host, options.port, opts, options.timeout)
 }
 
 /// Upgrade a plain TCP connection to TLS.
@@ -338,10 +344,14 @@ pub fn connect(options: TlsConnectionOptions) -> Result(Socket, Error) {
 ///
 pub fn upgrade(
   socket: TcpSocket,
-  certificates certificates: VerificationMethod,
+  verification verification: VerificationMethod,
   milliseconds timeout: Int,
 ) -> Result(Socket, Error) {
-  ssl_upgrade(socket, get_tls_options(certificates), timeout)
+  let opts =
+    erlang.rescue(fn() { get_tls_options(verification) })
+    |> result.map_error(fn(_) { SystemCacertificatesGetError })
+  use opts <- result.try(opts)
+  ssl_upgrade(socket, opts, timeout)
 }
 
 /// Whether to use system certificates or not.
