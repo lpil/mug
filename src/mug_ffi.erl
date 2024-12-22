@@ -1,26 +1,27 @@
 -module(mug_ffi).
 
--export([send/2, shutdown/1, coerce/1, ssl_start/0, ssl_shutdown/1, ssl_connect/3, ssl_connect/4, ssl_send/2, get_certs_keys/1, ssl_downgrade/2]).
+-export([send/2, recv/3, shutdown/1, coerce/1, ssl_upgrade/3, ssl_connect/4, get_certs_keys/1, ssl_downgrade/2]).
 
-send(Socket, Packet) ->
-    normalise(gen_tcp:send(Socket, Packet)).
+send({tcp_socket, Socket}, Packet) ->
+    normalise(gen_tcp:send(Socket, Packet));
+send({ssl_socket, Socket}, Packet) ->
+		normalise(ssl:send(Socket, Packet)).
 
-shutdown(Socket) ->
-    normalise(gen_tcp:shutdown(Socket, read_write)).
+recv({tcp_socket, Socket}, Length, Timeout) ->
+    gen_tcp:recv(Socket, Length, Timeout);
+recv({ssl_socket, Socket}, Length, Timeout) ->
+		ssl:recv(Socket, Length, Timeout).
 
-ssl_start() ->
-    normalise(ssl:start()).
-
-ssl_shutdown(Socket) ->
+shutdown({tcp_socket, Socket}) ->
+    normalise(gen_tcp:shutdown(Socket, read_write));
+shutdown({ssl_socket, Socket}) ->
     normalise(ssl:shutdown(Socket, read_write)).
 
-ssl_connect(Socket, Options, Timeout) ->
+ssl_upgrade(Socket, Options, Timeout) ->
     normalise(ssl:connect(Socket, Options, Timeout)).
+
 ssl_connect(Host, Port, Options, Timeout) ->
     normalise(ssl:connect(Host, Port, Options, Timeout)).
-
-ssl_send(Socket, Packet) ->
-    normalise(ssl:send(Socket, Packet)).
 
 get_certs_keys(CertsKeys) ->
     case CertsKeys of
@@ -32,7 +33,8 @@ get_certs_keys(CertsKeys) ->
             #{ certfile => unicode:characters_to_list(Certfile), keyfile => unicode:characters_to_list(Keyfile), password => unicode:characters_to_list(Password) }
     end.
 
-ssl_downgrade(Socket, Timeout) ->
+ssl_downgrade({tcp_socket, _}, _) -> {error, timeout};
+ssl_downgrade({ssl_socket, Socket}, Timeout) ->
     case ssl:close(Socket, Timeout) of
         ok -> {error, closed};
         {ok, Port} -> {ok, {Port, nil}};
