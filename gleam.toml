@@ -7,6 +7,9 @@ licences = ["Apache-2.0"]
 repository = { type = "github", user = "lpil", repo = "mug" }
 links = [{ title = "Website", href = "https://gleam.run" }]
 
+[erlang]
+extra_applications = ["ssl"]
+
 [dependencies]
 gleam_stdlib = ">= 0.44.0 and < 2.0.0"
 gleam_erlang = ">= 0.22.0 and < 1.0.0"

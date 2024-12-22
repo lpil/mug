@@ -1,51 +1,84 @@
 import gleam/bit_array
 import gleam/bytes_tree.{from_string as bits}
 import gleam/erlang/process
-import gleam/option.{None}
-import gleam/otp/actor
+import gleam/io
 import gleam/string
-import gleeunit
 import gleeunit/should
-import glisten
 import mug
 
-import mug_tls_test.{port as ssl_port}
+pub const port = 64_794
 
-pub const port = 64_793
-
-pub fn main() {
-  // Start an echo TCP server for the tests to use
-  let handler =
-    glisten.handler(fn(_) { #(Nil, None) }, fn(msg, state, conn) {
-      let assert glisten.Packet(msg) = msg
-      let assert Ok(_) = glisten.send(conn, bytes_tree.from_bit_array(msg))
-      actor.continue(state)
-    })
-  let assert Ok(_) = glisten.serve(handler, port)
-  let assert Ok(_) =
-    glisten.serve_ssl(
-      handler,
-      ssl_port,
-      certfile: "test/certs/server.crt",
-      keyfile: "test/certs/server.key",
-    )
-
-  gleeunit.main()
+fn connect() {
+  let assert Ok(mug.SslSocket(socket)) =
+    mug.new("localhost", port: port)
+    |> mug.with_tls()
+    |> mug.dangerously_disable_verification()
+    |> mug.connect()
+  mug.SslSocket(socket)
 }
 
-fn connect() -> mug.Socket {
+pub fn connect_without_verification_test() {
+  let socket = connect()
+  let assert Ok(_) = mug.shutdown(socket)
+  Nil
+}
+
+pub fn connect_with_system_ca_test() {
   let assert Ok(socket) =
-    mug.new("localhost", port: port)
-    |> mug.timeout(milliseconds: 500)
+    mug.new("example.com", port: 443)
+    |> mug.timeout(milliseconds: 10_000)
+    |> mug.with_tls()
     |> mug.connect()
-  socket
+  let assert Ok(_) = mug.shutdown(socket)
+  Nil
+}
+
+pub fn connect_without_system_ca_test() {
+  let assert Error(mug.TlsAlert(mug.UnknownCa, _)) =
+    mug.new("gleam.run", port: 443)
+    |> mug.timeout(milliseconds: 10_000)
+    |> mug.with_tls()
+    |> mug.no_system_cacerts()
+    |> mug.connect()
+  Nil
 }
 
 pub fn connect_invalid_host_test() {
   let assert Error(mug.Nxdomain) =
     mug.new("invalid.example.com", port: port)
     |> mug.timeout(milliseconds: 500)
+    |> mug.with_tls()
     |> mug.connect()
+}
+
+pub fn upgrade_test() {
+  let assert Ok(tcp_socket) =
+    mug.new("localhost", port: port)
+    |> mug.connect()
+  let assert Ok(mug.SslSocket(socket)) =
+    mug.upgrade(tcp_socket, mug.DangerouslyDisableVerification, 1000)
+  let socket = mug.SslSocket(socket)
+  let assert Ok(Nil) = mug.send(socket, <<"Hello, Joe!\n":utf8>>)
+  let assert Ok(data) = mug.receive(socket, 500)
+  should.equal(data, <<"Hello, Joe!\n":utf8>>)
+  let assert Ok(_) = mug.shutdown(socket)
+  Nil
+}
+
+pub fn upgrade_with_system_ca_test() {
+  let assert Ok(tcp_socket) =
+    mug.new("example.com", port: 443)
+    |> mug.connect()
+  let assert Ok(mug.SslSocket(socket)) =
+    mug.upgrade(tcp_socket, mug.DangerouslyDisableVerification, 5000)
+  let socket = mug.SslSocket(socket)
+  let assert Ok(Nil) =
+    mug.send(socket, <<"HEAD / HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>)
+  let assert Ok(data) = mug.receive(socket, 5000)
+  let assert Ok(data) = bit_array.to_string(data)
+  let assert "HTTP/1.1 200 OK\r\n" <> _ = data
+  let assert Ok(_) = mug.shutdown(socket)
+  Nil
 }
 
 pub fn hello_world_test() {
@@ -69,12 +102,18 @@ pub fn hello_world_test() {
 
   let assert Ok(_) = mug.shutdown(socket)
 
+  // if this sleep call does not exist, the below command *sometimes* errors out.
+  process.sleep(1)
   let assert Error(mug.Closed) = mug.send(socket, <<"One more thing!":utf8>>)
-  let assert Error(mug.Closed) = mug.receive(socket, timeout_milliseconds: 0)
+  // the below statement times out if timeout_milliseconds is 0, instead of closing
+  // the connection. Probably because of the internal workings of the SSL library.
+  let assert Error(mug.Closed) = mug.receive(socket, timeout_milliseconds: 1)
 }
 
 pub fn active_mode_test() {
   let socket = connect()
+
+  process.flush_messages()
 
   // Ask for the next packet to be sent as a message
   mug.receive_next_packet_as_message(socket)
@@ -87,10 +126,11 @@ pub fn active_mode_test() {
 
   let selector =
     process.new_selector()
-    |> mug.selecting_tcp_messages(fn(msg) { msg })
+    |> mug.selecting_tls_messages(fn(msg) { msg })
 
   let assert Ok(mug.Packet(packet_socket, <<"Hello, Joe!\n":utf8>>)) =
-    process.select(selector, 100)
+    process.select(selector, 1000)
+    |> io.debug()
 
   packet_socket
   |> should.equal(socket)
