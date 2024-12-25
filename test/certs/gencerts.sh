@@ -5,13 +5,13 @@ if [ ! -f gleam.toml ]; then
   echo "Please run this script in the project root" >&2
 fi
 
-pushd test/certs
-if [[ -f server.crt || -f server.key || -f server.csr || -f ca.crt || -f ca.key ]]; then
-  popd
-  echo "A key already exists in test/keys. Proceeding will overwrite it!"
-  echo "Press ENTER to proceed, CTRL+C to cancel."
-  read
-  pushd test/certs
+pushd test/certs > /dev/null
+if [[ (-f server.crt || -f server.key || -f server.csr || -f ca.crt || -f ca.key) && -z "${CI:-}" ]]; then
+  popd > /dev/null
+  echo "A key already exists in test/keys. Please delete it manually to proceed." >&2
+  echo "You can do so with the following command:" >&2
+  echo -e "\tfind . -maxdepth 1 -type f ! -name 'gencerts.sh' -delete" >&2
+  exit 1
 fi
 
 echo "Removing exiting certificates..."
