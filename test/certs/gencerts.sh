@@ -9,8 +9,8 @@ fi
 cd test/certs
 if [[ (-f server.crt || -f server.key || -f server.csr || -f ca.crt || -f ca.key) && -z "${CI:-}" ]]; then
   echo "A key already exists in test/keys. Please delete it manually to proceed." >&2
-  echo "You can do so with the following command:" >&2
-  echo -e "\tfind . -maxdepth 1 -type f ! -name 'gencerts.sh' -delete" >&2
+  echo "You can do so by running the following command in the project root:" >&2
+  echo -e "\tfind test/certs -maxdepth 1 -type f ! -name 'gencerts.sh' -delete" >&2
   exit 1
 fi
 
