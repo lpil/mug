@@ -6,9 +6,8 @@ if [ ! -f gleam.toml ]; then
   exit 1
 fi
 
-pushd test/certs > /dev/null
+cd test/certs
 if [[ (-f server.crt || -f server.key || -f server.csr || -f ca.crt || -f ca.key) && -z "${CI:-}" ]]; then
-  popd > /dev/null
   echo "A key already exists in test/keys. Please delete it manually to proceed." >&2
   echo "You can do so with the following command:" >&2
   echo -e "\tfind . -maxdepth 1 -type f ! -name 'gencerts.sh' -delete" >&2
@@ -31,5 +30,3 @@ echo "Generating the certificate request..."
 openssl req -new -key server.key -out server.csr -addext "subjectAltName=DNS:localhost" -subj '/C=XX/ST=XX/L=XX/O=XX/OU=XX/CN=localhost'
 echo "Generating the certificate..."
 openssl x509 -req -days 365 -in server.csr -outform pem -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt -days 3650 -copy_extensions copy
-
-popd
