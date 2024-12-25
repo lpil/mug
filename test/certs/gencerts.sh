@@ -3,6 +3,7 @@ set -eu
 
 if [ ! -f gleam.toml ]; then
   echo "Please run this script in the project root" >&2
+  exit 1
 fi
 
 pushd test/certs > /dev/null
