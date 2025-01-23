@@ -1,7 +1,6 @@
 import gleam/bit_array
 import gleam/bytes_tree.{from_string as bits}
 import gleam/erlang/process
-import gleam/io
 import gleam/string
 import gleeunit/should
 import mug
@@ -130,7 +129,6 @@ pub fn active_mode_test() {
 
   let assert Ok(mug.Packet(packet_socket, <<"Hello, Joe!\n":utf8>>)) =
     process.select(selector, 1000)
-    |> io.debug()
 
   packet_socket
   |> should.equal(socket)
