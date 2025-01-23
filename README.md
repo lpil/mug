@@ -114,3 +114,18 @@ pub fn main() {
 ```
 
 Documentation can be found at <https://hexdocs.pm/mug>.
+
+## Testing the library
+
+Some tests testing the TLS capabilities of `mug` require there to be a CA
+certificate and a regular certificate and their keys to be present in the
+`test/certs` folder. These certs can be generated if you have OpenSSL installed
+by running the `./test/certs/gencerts.sh` script from the project's root
+directory. If these certificates are not present, you will get a
+`Pattern match failed` error on most tests in the `mug_tls_test.gleam` file.
+
+```bash
+$ ./test/certs/gencerts.sh  # Run this first if you haven't already!
+
+$ gleam test
+```
