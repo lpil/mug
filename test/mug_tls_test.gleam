@@ -101,7 +101,8 @@ pub fn hello_world_test() {
 
   let assert Ok(_) = mug.shutdown(socket)
 
-  // if this sleep call does not exist, the below command *sometimes* errors out.
+  // if this sleep call does not exist, the below command *sometimes* gives
+  // an inet:einval error instead of a mug.Closed error.
   process.sleep(1)
   let assert Error(mug.Closed) = mug.send(socket, <<"One more thing!":utf8>>)
   // the below statement times out if timeout_milliseconds is 0, instead of closing
