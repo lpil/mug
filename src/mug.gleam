@@ -73,11 +73,6 @@ pub type TlsAlert {
 /// - https://www.erlang.org/doc/man/inet#type-posix
 ///
 pub type Error {
-  /// The `ssl` application was not started/depended upon.
-  /// Either call `tls.start()` before calling any TLS methods, or (better yet) depend on the `ssl`
-  /// erlang application in [`gleam.toml`](https://gleam.run/writing-gleam/gleam-toml/).
-  SslNotStarted
-
   /// Unable to get the OS supplied CA certificates. This error is only returned if the
   /// `use_system_cacerts` option is set to `true` and the system's CA certificates
   /// could not be retrieved.
