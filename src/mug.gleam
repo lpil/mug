@@ -17,9 +17,16 @@ pub type TcpSocket
 
 pub type SslSocket
 
-pub type Socket {
+pub opaque type Socket {
   TcpSocket(TcpSocket)
   SslSocket(SslSocket)
+}
+
+pub fn socket_is_ssl(socket: Socket) {
+  case socket {
+    SslSocket(_) -> True
+    TcpSocket(_) -> False
+  }
 }
 
 type DoNotLeak
@@ -299,20 +306,17 @@ pub fn dangerously_disable_verification(options) {
 /// This is useful when you want to use your own CA certificates to verify the
 /// server's certificate. If verification is disabled, this function does nothing.
 pub fn no_system_cacerts(options) {
-  ConnectionOptions(
-    ..options,
-    tls_opts: case options.tls_opts {
-      UseTls(TlsOptions(verification_method)) ->
-        UseTls(
-          TlsOptions(verification_method: case verification_method {
-            Certificates(_, cacerts, certs_keys) ->
-              Certificates(False, cacerts, certs_keys)
-            _ -> verification_method
-          }),
-        )
-      _ -> options.tls_opts
-    },
-  )
+  ConnectionOptions(..options, tls_opts: case options.tls_opts {
+    UseTls(TlsOptions(verification_method)) ->
+      UseTls(
+        TlsOptions(verification_method: case verification_method {
+          Certificates(_, cacerts, certs_keys) ->
+            Certificates(False, cacerts, certs_keys)
+          _ -> verification_method
+        }),
+      )
+    _ -> options.tls_opts
+  })
 }
 
 /// Set the following CA Certificates for the connection. These CA certificates will be used to check
@@ -325,20 +329,17 @@ pub fn cacerts(
   options: ConnectionOptions,
   cacerts: CaCertificates,
 ) -> ConnectionOptions {
-  ConnectionOptions(
-    ..options,
-    tls_opts: case options.tls_opts {
-      UseTls(TlsOptions(verification_method)) ->
-        UseTls(
-          TlsOptions(verification_method: case verification_method {
-            Certificates(system, _, certs_keys) ->
-              Certificates(system, Some(cacerts), certs_keys)
-            _ -> verification_method
-          }),
-        )
-      _ -> options.tls_opts
-    },
-  )
+  ConnectionOptions(..options, tls_opts: case options.tls_opts {
+    UseTls(TlsOptions(verification_method)) ->
+      UseTls(
+        TlsOptions(verification_method: case verification_method {
+          Certificates(system, _, certs_keys) ->
+            Certificates(system, Some(cacerts), certs_keys)
+          _ -> verification_method
+        }),
+      )
+    _ -> options.tls_opts
+  })
 }
 
 /// Set the certs_keys TLS [common cert option](https://www.erlang.org/doc/apps/ssl/ssl.html#t:common_option_cert/0).  
@@ -358,20 +359,17 @@ pub fn certs_keys(
   options: ConnectionOptions,
   certs_keys certs_keys: List(CertsKeys),
 ) -> ConnectionOptions {
-  ConnectionOptions(
-    ..options,
-    tls_opts: case options.tls_opts {
-      UseTls(TlsOptions(verification_method)) ->
-        UseTls(
-          TlsOptions(verification_method: case verification_method {
-            Certificates(system, cacerts, _) ->
-              Certificates(system, cacerts, certs_keys)
-            _ -> verification_method
-          }),
-        )
-      _ -> options.tls_opts
-    },
-  )
+  ConnectionOptions(..options, tls_opts: case options.tls_opts {
+    UseTls(TlsOptions(verification_method)) ->
+      UseTls(
+        TlsOptions(verification_method: case verification_method {
+          Certificates(system, cacerts, _) ->
+            Certificates(system, cacerts, certs_keys)
+          _ -> verification_method
+        }),
+      )
+    _ -> options.tls_opts
+  })
 }
 
 type GenTcpOptionName {

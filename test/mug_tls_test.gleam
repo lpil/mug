@@ -9,12 +9,13 @@ import mug
 pub const port = 64_794
 
 fn connect() {
-  let assert Ok(mug.SslSocket(socket)) =
+  let assert Ok(socket) =
     mug.new("localhost", port: port)
     |> mug.with_tls()
     |> mug.dangerously_disable_verification()
     |> mug.connect()
-  mug.SslSocket(socket)
+  let assert True = mug.socket_is_ssl(socket)
+  socket
 }
 
 pub fn connect_without_verification_test() {
@@ -55,9 +56,9 @@ pub fn upgrade_test() {
   let assert Ok(tcp_socket) =
     mug.new("localhost", port: port)
     |> mug.connect()
-  let assert Ok(mug.SslSocket(socket)) =
+  let assert Ok(socket) =
     mug.upgrade(tcp_socket, mug.DangerouslyDisableVerification, 1000)
-  let socket = mug.SslSocket(socket)
+  let assert True = mug.socket_is_ssl(socket)
   let assert Ok(Nil) = mug.send(socket, <<"Hello, Joe!\n":utf8>>)
   let assert Ok(data) = mug.receive(socket, 500)
   should.equal(data, <<"Hello, Joe!\n":utf8>>)
@@ -69,9 +70,9 @@ pub fn upgrade_with_system_ca_test() {
   let assert Ok(tcp_socket) =
     mug.new("example.com", port: 443)
     |> mug.connect()
-  let assert Ok(mug.SslSocket(socket)) =
-  let socket = mug.SslSocket(socket)
+  let assert Ok(socket) =
     mug.upgrade(tcp_socket, mug.Certificates(True, option.None, []), 5000)
+  let assert True = mug.socket_is_ssl(socket)
   let assert Ok(Nil) =
     mug.send(socket, <<"HEAD / HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>)
   let assert Ok(data) = mug.receive(socket, 5000)
