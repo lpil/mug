@@ -1,6 +1,7 @@
 import gleam/bit_array
 import gleam/bytes_tree.{from_string as bits}
 import gleam/erlang/process
+import gleam/option
 import gleam/string
 import gleeunit/should
 import mug
@@ -69,8 +70,8 @@ pub fn upgrade_with_system_ca_test() {
     mug.new("example.com", port: 443)
     |> mug.connect()
   let assert Ok(mug.SslSocket(socket)) =
-    mug.upgrade(tcp_socket, mug.DangerouslyDisableVerification, 5000)
   let socket = mug.SslSocket(socket)
+    mug.upgrade(tcp_socket, mug.Certificates(True, option.None, []), 5000)
   let assert Ok(Nil) =
     mug.send(socket, <<"HEAD / HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>)
   let assert Ok(data) = mug.receive(socket, 5000)
