@@ -1,6 +1,6 @@
 -module(mug_ffi).
 
--export([send/2, recv/3, shutdown/1, coerce/1, ssl_upgrade/3, ssl_connect/4, get_certs_keys/1, ssl_downgrade/2]).
+-export([send/2, recv/3, shutdown/1, coerce/1, ssl_upgrade/3, ssl_connect/4, get_certs_keys/1, ssl_downgrade/2, get_system_cacerts/0]).
 
 send({tcp_socket, Socket}, Packet) ->
     normalise(gen_tcp:send(Socket, Packet));
@@ -40,6 +40,13 @@ ssl_downgrade({ssl_socket, Socket}, Timeout) ->
         {ok, Port} -> {ok, {Port, nil}};
         {ok, Port, Data} -> {ok, {Port, {some, Data}}};
         {error, _} = E -> E
+    end.
+
+get_system_cacerts() ->
+    try public_key:cacerts_get() of
+        Certs -> {ok, Certs}
+    catch
+        error:{failed_load_certs, Reason} -> {error, Reason}
     end.
 
 normalise(ok) -> {ok, nil};

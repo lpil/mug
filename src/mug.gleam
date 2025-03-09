@@ -1,10 +1,8 @@
 import gleam/bytes_tree.{type BytesTree}
 import gleam/dynamic.{type Dynamic}
-import gleam/erlang
 import gleam/erlang/atom
 import gleam/erlang/charlist.{type Charlist}
 import gleam/erlang/process
-import gleam/io
 import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/result
@@ -12,6 +10,7 @@ import gleam/string
 import mug/internal/ssl_options.{
   type SslOptionName, Cacertfile, Cacerts, CertsKeys, Verify,
 }
+import mug/internal/system_cacerts
 
 pub type TcpSocket
 
@@ -76,7 +75,7 @@ pub type Error {
   /// Unable to get the OS supplied CA certificates. This error is only returned if the
   /// `use_system_cacerts` option is set to `true` and the system's CA certificates
   /// could not be retrieved.
-  SystemCacertificatesGetError
+  SystemCacertificatesGetError(system_cacerts.SystemCacertificatesGetError)
 
   // For connect only
   /// An invalid option was passed
@@ -407,7 +406,7 @@ type VerifyValue {
 type SslOption =
   #(SslOptionName, Dynamic)
 
-fn get_tls_options(vm: TlsVerificationMethod) -> List(SslOption) {
+fn get_tls_options(vm: TlsVerificationMethod) -> Result(List(SslOption), Error) {
   let opts = [
     // When data is received on the socket queue it in the TCP stack rather than
     // sending it as an Erlang message to the socket owner's inbox.
@@ -416,43 +415,43 @@ fn get_tls_options(vm: TlsVerificationMethod) -> List(SslOption) {
     #(ssl_options.Mode, dynamic.from(Binary)),
   ]
   case vm {
-    DangerouslyDisableVerification -> [
-      #(Verify, dynamic.from(VerifyNone)),
-      ..opts
-    ]
-    Certificates(system, cacerts, certs_keys) -> [
-      #(Verify, dynamic.from(VerifyPeer)),
-      get_cacerts_opt(system, cacerts),
-      #(CertsKeys, dynamic.from(certs_keys)),
-    ]
+    DangerouslyDisableVerification ->
+      Ok([#(Verify, dynamic.from(VerifyNone)), ..opts])
+    Certificates(system, cacerts, certs_keys) -> {
+      use cacerts <- result.try(get_cacerts_opt(system, cacerts))
+      Ok([
+        #(Verify, dynamic.from(VerifyPeer)),
+        cacerts,
+        #(CertsKeys, dynamic.from(certs_keys)),
+      ])
+    }
   }
 }
 
-fn get_cacerts_opt(system: Bool, cacerts: Option(CaCertificates)) -> SslOption {
+fn get_cacerts_opt(
+  system: Bool,
+  cacerts: Option(CaCertificates),
+) -> Result(SslOption, Error) {
   case system, cacerts {
-    False, Some(DerEncodedCaCertificates(cacerts)) -> #(
-      Cacerts,
-      dynamic.from(cacerts),
-    )
-    True, Some(DerEncodedCaCertificates(cacerts)) -> #(
-      Cacerts,
-      dynamic.from(list.flatten([get_system_cacerts().0, cacerts])),
-    )
-    _, Some(PemEncodedCaCertificates(cacerts)) -> #(
-      Cacertfile,
-      dynamic.from(string.to_utf_codepoints(cacerts)),
-    )
-    True, None -> #(Cacerts, dynamic.from(get_system_cacerts()))
-    False, None -> #(Cacerts, dynamic.from([]))
+    False, Some(DerEncodedCaCertificates(cacerts)) ->
+      Ok(#(Cacerts, dynamic.from(cacerts)))
+    True, Some(DerEncodedCaCertificates(cacerts)) -> {
+      let certs =
+        system_cacerts.get() |> result.map_error(SystemCacertificatesGetError)
+      use certs <- result.try(certs)
+      Ok(#(Cacerts, dynamic.from(list.flatten([certs.0, cacerts]))))
+    }
+    _, Some(PemEncodedCaCertificates(cacerts)) ->
+      Ok(#(Cacertfile, dynamic.from(string.to_utf_codepoints(cacerts))))
+    True, None -> {
+      let certs =
+        system_cacerts.get() |> result.map_error(SystemCacertificatesGetError)
+      use certs <- result.try(certs)
+      Ok(#(Cacerts, dynamic.from(certs)))
+    }
+    False, None -> Ok(#(Cacerts, dynamic.from([])))
   }
 }
-
-/// Adapted from https://www.erlang.org/doc/apps/public_key/public_key#t:combined_cert/0
-type CombinedCert =
-  #(List(BitArray), #(Dynamic, Dynamic, Dynamic))
-
-@external(erlang, "public_key", "cacerts_get")
-fn get_system_cacerts() -> CombinedCert
 
 /// Establish a TCP/TLS connection to the server specified in the connection
 /// options.
@@ -468,10 +467,7 @@ pub fn connect(options: ConnectionOptions) -> Result(Socket, Error) {
   let host = charlist.from_string(options.host)
   case options.tls_opts {
     UseTls(TlsOptions(vm)) -> {
-      let opts =
-        erlang.rescue(fn() { get_tls_options(vm) })
-        |> result.replace_error(SystemCacertificatesGetError)
-      use opts <- result.try(opts)
+      use opts <- result.try(get_tls_options(vm))
       ssl_connect(host, options.port, opts, options.timeout)
       |> result.map(SslSocket)
     }
@@ -517,10 +513,7 @@ pub fn upgrade(
 ) -> Result(Socket, Error) {
   case socket {
     TcpSocket(socket) -> {
-      let opts =
-        erlang.rescue(fn() { get_tls_options(vm) })
-        |> result.map_error(fn(_) { SystemCacertificatesGetError })
-      use opts <- result.try(opts)
+      use opts <- result.try(get_tls_options(vm))
       ssl_upgrade(socket, opts, timeout)
       |> result.map(SslSocket)
     }
