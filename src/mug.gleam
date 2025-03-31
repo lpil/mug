@@ -231,20 +231,26 @@ pub type CaCertificates {
 
 pub type CertsKeys {
   /// A list of DER-encoded certificates and their corresponding key.
-  DerEncodedCertsKeys(cert: List(BitArray), key: Key)
+  DerEncodedCertsKeys(cert: List(BitArray), key: DerEncodedKey)
   /// Path to a file containing PEM-encoded certificates and their key, with an optional
   /// password associated with the file containing the key.
   PemEncodedCertsKeys(
-    certfile: String,
-    keyfile: String,
+    certificate_path: String,
+    key_path: String,
     password: Option(BitArray),
   )
 }
 
-pub type Key {
+pub type DerEncodedKeyAlgorithm {
+  RSAPrivateKey
+  DSAPrivateKey
+  ECPrivateKey
+  PrivateKeyInfo
+}
+
+pub type DerEncodedKey {
   /// A der-encoded key.  
-  /// `alg` is one of 'RSAPrivateKey' | 'DSAPrivateKey' | 'ECPrivateKey' | 'PrivateKeyInfo'.
-  DerEncodedKey(alg: String, key: BitArray)
+  DerEncodedKey(algorithm: DerEncodedKeyAlgorithm, key: BitArray)
 }
 
 /// Create a new set of connection options.

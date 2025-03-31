@@ -25,8 +25,8 @@ ssl_connect(Host, Port, Options, Timeout) ->
 
 get_certs_keys(CertsKeys) ->
     case CertsKeys of
-        {der_encoded_certs_keys, Cert, Key} ->
-            #{ cert => unicode:characters_to_list(Cert), key => unicode:characters_to_list(Key) };
+        {der_encoded_certs_keys, Cert, {der_encoded_key, KeyAlg, KeyBin}} ->
+            #{ cert => unicode:characters_to_list(Cert), key => {KeyAlg, KeyBin} };
         {pem_encoded_certs_keys, Certfile, Keyfile, none} ->
             #{ certfile => unicode:characters_to_list(Certfile), keyfile => unicode:characters_to_list(Keyfile) };
         {pem_encoded_certs_keys, Certfile, Keyfile, {some, Password}} ->
