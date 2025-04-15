@@ -1,14 +1,17 @@
 -module(mug_ffi).
 
--export([connect/4, send/2, shutdown/1, coerce/1]).
+-export([connect_ip/4, connect_socket/3, send/2, shutdown/1, coerce/1]).
 
-connect(Host0, Port0, Opts, Timeout) ->
-    {Host1, Port1} = case Host0 of
-        "/" ++ _Path -> {{local, Host0}, 0};
-        "@" ++ Path -> {{local, [0|Path]}, 0};
-        Host0 -> {Host0, Port0}
+connect_ip(Host, Port, Opts, Timeout) ->
+    gen_tcp:connect(Host, Port, Opts, Timeout).
+
+connect_socket(Host0, Opts, Timeout) ->
+    Host1 = case Host0 of
+        "/" ++ _Path -> {local, Host0};
+        "@" ++ Path -> {local, [0|Path]}
     end,
-    gen_tcp:connect(Host1, Port1, Opts, Timeout).
+    gen_tcp:connect(Host1, 0, Opts, Timeout).
+
 
 send(Socket, Packet) ->
     normalise(gen_tcp:send(Socket, Packet)).
