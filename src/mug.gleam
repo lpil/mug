@@ -99,46 +99,47 @@ pub type Error {
 
 pub type ConnectionOptions {
   ConnectionOptions(
+    /// The socket address to connect to
+    ///
+    address: SocketAddress,
+    /// A timeout in milliseconds for the connection to be established.
+    ///
+    /// Note that if the operating system returns a timeout then this package
+    /// will also return a timeout, even if this timeout value has not been
+    /// reached yet.
+    timeout: Int,
+  )
+}
+
+pub type SocketAddress {
+  UnixSocketAddress(
+    /// The hostname of the server to connect to.
+    /// If it starts with "@" it will be treated as an abstract socket.
+    /// Otherwise it will be treated as a normal unix socket. Both absolut and relative paths work.
+    path: String,
+  )
+
+  NetworkSocketAddress(
     /// The hostname of the server to connect to.
     ///
     /// The hostname can be a string with a hostname or IP address.
     host: String,
     /// The port of the server to connect to.
     port: Int,
-    /// A timeout in milliseconds for the connection to be established.
-    ///
-    /// Note that if the operating system returns a timeout then this package
-    /// will also return a timeout, even if this timeout value has not been
-    /// reached yet.
-    timeout: Int,
-  )
-  UnixConnectionOptions(
-    /// The hostname of the server to connect to.
-    /// 
-    /// The hostname can be a Unix socket.
-    /// If the hostname starts with `/` or `@` it is treated as a unix socket
-    /// and abstract unix socket respectively.
-    host: String,
-    /// A timeout in milliseconds for the connection to be established.
-    ///
-    /// Note that if the operating system returns a timeout then this package
-    /// will also return a timeout, even if this timeout value has not been
-    /// reached yet.
-    timeout: Int,
   )
 }
 
 /// Create a new set of connection options.
 ///
 pub fn new(host: String, port port: Int) -> ConnectionOptions {
-  ConnectionOptions(host: host, port: port, timeout: 1000)
+  ConnectionOptions(NetworkSocketAddress(host: host, port: port), timeout: 1000)
 }
 
-/// If the hostname starts with `/` or `@` it is treated as a unix socket
-/// and abstract unix socket respectively.
+/// If the hostname starts with "@" it will be treated as an abstract socket.
+/// Otherwise it will be treated as a normal unix socket. Both absolut and relative paths work.
 ///
-pub fn new_unix_socket(host: String) -> ConnectionOptions {
-  UnixConnectionOptions(host: host, timeout: 1000)
+pub fn new_unix_socket(path: String) -> ConnectionOptions {
+  ConnectionOptions(UnixSocketAddress(path: path), timeout: 1000)
 }
 
 /// Specify a timeout for the connection to be established.
@@ -147,12 +148,7 @@ pub fn timeout(
   options: ConnectionOptions,
   milliseconds timeout: Int,
 ) -> ConnectionOptions {
-  case options {
-    ConnectionOptions(host, port, _) ->
-      ConnectionOptions(host:, port:, timeout: timeout)
-    UnixConnectionOptions(host, _) ->
-      UnixConnectionOptions(host, timeout: timeout)
-  }
+  ConnectionOptions(..options, timeout: timeout)
 }
 
 /// Establish a TCP connection to the server specified in the connection
@@ -173,13 +169,17 @@ pub fn connect(options: ConnectionOptions) -> Result(Socket, Error) {
     // We want the data from the socket as bit arrays please, not lists.
     #(Mode, dynamic.from(Binary)),
   ]
-  let host = charlist.from_string(options.host)
 
   case options {
-    UnixConnectionOptions(_, timeout) ->
-      socket_tcp_connect(host, gen_options, timeout)
-    ConnectionOptions(_, port, timeout) ->
-      ip_tcp_connect(host, port, gen_options, timeout)
+    ConnectionOptions(UnixSocketAddress(path), timeout) ->
+      socket_tcp_connect(charlist.from_string(path), gen_options, timeout)
+    ConnectionOptions(NetworkSocketAddress(host, port), timeout) ->
+      network_tcp_connect(
+        charlist.from_string(host),
+        port,
+        gen_options,
+        timeout,
+      )
   }
 }
 
@@ -199,8 +199,8 @@ type ActiveValue {
 type GenTcpOption =
   #(GenTcpOptionName, Dynamic)
 
-@external(erlang, "mug_ffi", "connect_ip")
-fn ip_tcp_connect(
+@external(erlang, "mug_ffi", "connect_network")
+fn network_tcp_connect(
   host: Charlist,
   port: Int,
   options: List(GenTcpOption),
