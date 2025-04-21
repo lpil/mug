@@ -1,6 +1,17 @@
 -module(mug_ffi).
 
--export([send/2, shutdown/1, coerce/1]).
+-export([connect_network/4, connect_socket/3, send/2, shutdown/1, coerce/1]).
+
+connect_network(Host, Port, Opts, Timeout) ->
+    gen_tcp:connect(Host, Port, Opts, Timeout).
+
+connect_socket(Host0, Opts, Timeout) ->
+    Host1 = case Host0 of
+        "@" ++ Path -> {local, [0|Path]};
+        _ -> {local, Host0}
+    end,
+    gen_tcp:connect(Host1, 0, Opts, Timeout).
+
 
 send(Socket, Packet) ->
     normalise(gen_tcp:send(Socket, Packet)).
