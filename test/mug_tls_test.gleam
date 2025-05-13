@@ -66,19 +66,31 @@ pub fn upgrade_test() {
   Nil
 }
 
-pub fn upgrade_with_system_ca_test() {
+pub fn upgrade_self_signed_test() {
   let assert Ok(tcp_socket) =
-    mug.new("example.com", port: 443)
+    mug.new("localhost", port: port)
     |> mug.connect()
-  let assert Ok(socket) =
-    mug.upgrade(tcp_socket, mug.Certificates(True, option.None, []), 5000)
-  let assert True = mug.socket_is_ssl(socket)
-  let assert Ok(Nil) =
-    mug.send(socket, <<"HEAD / HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>)
-  let assert Ok(data) = mug.receive(socket, 5000)
-  let assert Ok(data) = bit_array.to_string(data)
-  let assert "HTTP/1.1 200 OK\r\n" <> _ = data
-  let assert Ok(_) = mug.shutdown(socket)
+  // Erlang's SSL module currently errors on self-signed certificates,
+  // so when there's a way to use self-signed certificates later,
+  // this let assert should be testing for an Ok value instead.
+  let assert Error(mug.TlsAlert(alert: mug.BadCertificate, description:)) =
+    mug.upgrade(
+      tcp_socket,
+      mug.Certificates(
+        False,
+        option.Some(mug.PemEncodedCaCertificates("test/certs/ca.crt")),
+        [
+          mug.PemEncodedCertificatesKeys(
+            certificate_path: "test/certs/server.crt",
+            key_path: "test/certs/server.key",
+            password: option.None,
+          ),
+        ],
+      ),
+      1000,
+    )
+  string.contains(description, "selfsigned_peer")
+  |> should.be_true
   Nil
 }
 
