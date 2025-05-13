@@ -202,7 +202,7 @@ pub type TlsVerificationMethod {
   /// The `use_system_cacerts` option makes mug use the system's CA certificates, which are 
   /// usually set to a group of competent CAs who sign most of the web's certificates.  
   /// You may specifiy your own CA certificates with the `cacerts` option, and custom
-  /// certificates and their keys with the `certs_keys` option.
+  /// certificates and their keys with the `certificate_keys` option.
   ///
   /// Note that specifying a PEM encoded CA certificate file will result in the system CA
   /// certificates not being used. This is because of how the underlying [erlang implementation](https://www.erlang.org/doc/apps/ssl/ssl.html#t:client_option/0)
@@ -213,7 +213,7 @@ pub type TlsVerificationMethod {
   Certificates(
     use_system_cacerts: Bool,
     cacerts: Option(CaCertificates),
-    certs_keys: List(CertsKeys),
+    certificate_keys: List(CertificateKeys),
   )
   /// Do not verify certificates. While this does allow you to use self-signed certificates.
   /// It is highly recommended to not skip verification, add a custom CA instead.
@@ -229,7 +229,7 @@ pub type CaCertificates {
   PemEncodedCaCertificates(cacertfile: String)
 }
 
-pub type CertsKeys {
+pub type CertificateKeys {
   /// A list of DER-encoded certificates and their corresponding key.
   DerEncodedCertsKeys(cert: List(BitArray), key: DerEncodedKey)
   /// Path to a file containing PEM-encoded certificates and their key, with an optional
@@ -283,7 +283,7 @@ pub fn with_tls(options) {
         verification_method: Certificates(
           use_system_cacerts: True,
           cacerts: None,
-          certs_keys: [],
+          certificate_keys: [],
         ),
       ),
     ),
@@ -306,20 +306,17 @@ pub fn dangerously_disable_verification(options) {
 /// This is useful when you want to use your own CA certificates to verify the
 /// server's certificate. If verification is disabled, this function does nothing.
 pub fn no_system_cacerts(options) {
-  ConnectionOptions(
-    ..options,
-    tls_opts: case options.tls_opts {
-      UseTls(TlsOptions(verification_method)) ->
-        UseTls(
-          TlsOptions(verification_method: case verification_method {
-            Certificates(_, cacerts, certs_keys) ->
-              Certificates(False, cacerts, certs_keys)
-            _ -> verification_method
-          }),
-        )
-      _ -> options.tls_opts
-    },
-  )
+  ConnectionOptions(..options, tls_opts: case options.tls_opts {
+    UseTls(TlsOptions(verification_method)) ->
+      UseTls(
+        TlsOptions(verification_method: case verification_method {
+          Certificates(_, cacerts, certificate_keys) ->
+            Certificates(False, cacerts, certificate_keys)
+          _ -> verification_method
+        }),
+      )
+    _ -> options.tls_opts
+  })
 }
 
 /// Set the following CA Certificates for the connection. These CA certificates will be used to check
@@ -332,25 +329,22 @@ pub fn cacerts(
   options: ConnectionOptions,
   cacerts: CaCertificates,
 ) -> ConnectionOptions {
-  ConnectionOptions(
-    ..options,
-    tls_opts: case options.tls_opts {
-      UseTls(TlsOptions(verification_method)) ->
-        UseTls(
-          TlsOptions(verification_method: case verification_method {
-            Certificates(system, _, certs_keys) ->
-              Certificates(system, Some(cacerts), certs_keys)
-            _ -> verification_method
-          }),
-        )
-      _ -> options.tls_opts
-    },
-  )
+  ConnectionOptions(..options, tls_opts: case options.tls_opts {
+    UseTls(TlsOptions(verification_method)) ->
+      UseTls(
+        TlsOptions(verification_method: case verification_method {
+          Certificates(system, _, certificate_keys) ->
+            Certificates(system, Some(cacerts), certificate_keys)
+          _ -> verification_method
+        }),
+      )
+    _ -> options.tls_opts
+  })
 }
 
-/// Set the certs_keys TLS [common cert option](https://www.erlang.org/doc/apps/ssl/ssl.html#t:common_option_cert/0).  
+/// Set the certificate_keys TLS [common cert option](https://www.erlang.org/doc/apps/ssl/ssl.html#t:common_option_cert/0).  
 ///
-/// The certs_keys can be specified in two ways, a list of der-encoded certificates with their corresponding key, or
+/// The certificate_keys can be specified in two ways, a list of der-encoded certificates with their corresponding key, or
 /// the paths to a certfile and keyfile containing one or more PEM-certificates and their corresponding key. A password
 /// may also be specified for the file containing the key. Note that the entity certificate must be the first certificate
 /// in the der-encoded list or the pem-encoded file.
@@ -361,24 +355,21 @@ pub fn cacerts(
 ///
 /// If verification is disabled, this function does nothing.
 ///
-pub fn certs_keys(
+pub fn certificate_keys(
   options: ConnectionOptions,
-  certs_keys certs_keys: List(CertsKeys),
+  certificate_keys certificate_keys: List(CertificateKeys),
 ) -> ConnectionOptions {
-  ConnectionOptions(
-    ..options,
-    tls_opts: case options.tls_opts {
-      UseTls(TlsOptions(verification_method)) ->
-        UseTls(
-          TlsOptions(verification_method: case verification_method {
-            Certificates(system, cacerts, _) ->
-              Certificates(system, cacerts, certs_keys)
-            _ -> verification_method
-          }),
-        )
-      _ -> options.tls_opts
-    },
-  )
+  ConnectionOptions(..options, tls_opts: case options.tls_opts {
+    UseTls(TlsOptions(verification_method)) ->
+      UseTls(
+        TlsOptions(verification_method: case verification_method {
+          Certificates(system, cacerts, _) ->
+            Certificates(system, cacerts, certificate_keys)
+          _ -> verification_method
+        }),
+      )
+    _ -> options.tls_opts
+  })
 }
 
 type GenTcpOptionName {
@@ -432,12 +423,12 @@ fn get_tls_options(vm: TlsVerificationMethod) -> Result(List(SslOption), Error) 
   case vm {
     DangerouslyDisableVerification ->
       Ok([#(Verify, dynamic.from(VerifyNone)), ..opts])
-    Certificates(system, cacerts, certs_keys) -> {
+    Certificates(system, cacerts, certificate_keys) -> {
       use cacerts <- result.try(get_cacerts_opt(system, cacerts))
       Ok([
         #(Verify, dynamic.from(VerifyPeer)),
         cacerts,
-        #(CertsKeys, dynamic.from(certs_keys)),
+        #(CertsKeys, dynamic.from(certificate_keys)),
       ])
     }
   }
