@@ -428,7 +428,7 @@ fn get_tls_options(vm: TlsVerificationMethod) -> Result(List(SslOption), Error) 
       Ok([
         #(Verify, dynamic.from(VerifyPeer)),
         cacerts,
-        #(CertsKeys, dynamic.from(certificates_keys)),
+        #(CertsKeys, dynamic.from(get_certs_keys(certificates_keys))),
       ])
     }
   }
@@ -458,6 +458,9 @@ fn get_cacerts_opt(
     False, None -> Ok(#(Cacerts, dynamic.from([])))
   }
 }
+
+@external(erlang, "mug_ffi", "get_certs_keys")
+fn get_certs_keys(certs_keys: List(CertificatesKeys)) -> certs_keys
 
 /// Establish a TCP/TLS connection to the server specified in the connection
 /// options.

@@ -23,15 +23,20 @@ ssl_upgrade(Socket, Options, Timeout) ->
 ssl_connect(Host, Port, Options, Timeout) ->
     normalise(ssl:connect(Host, Port, Options, Timeout)).
 
-get_certs_keys(CertsKeys) ->
-    case CertsKeys of
-        {der_encoded_certificates_keys, Cert, {der_encoded_key, KeyAlg, KeyBin}} ->
-            #{ cert => unicode:characters_to_list(Cert), key => {KeyAlg, KeyBin} };
+get_certs_keys(CertsKeysList) ->
+    lists:map(fun (CertsKeys) -> case CertsKeys of
+        {der_encoded_certificates_keys, Certs, {der_encoded_key, KeyAlg, KeyBin}} ->
+            #{ cert => lists:map(fun unicode:characters_to_list/1, Certs), key => {normalize_key_algo(KeyAlg), KeyBin} };
         {pem_encoded_certificates_keys, Certfile, Keyfile, none} ->
             #{ certfile => unicode:characters_to_list(Certfile), keyfile => unicode:characters_to_list(Keyfile) };
         {pem_encoded_certificates_keys, Certfile, Keyfile, {some, Password}} ->
             #{ certfile => unicode:characters_to_list(Certfile), keyfile => unicode:characters_to_list(Keyfile), password => unicode:characters_to_list(Password) }
-    end.
+    end end, CertsKeysList).
+
+normalize_key_algo(rsa_private_key) -> 'RSAPrivateKey';
+normalize_key_algo(dsa_private_key) -> 'DSAPrivateKey';
+normalize_key_algo(ec_private_key) -> 'ECPrivateKey';
+normalize_key_algo(private_key_info) -> 'PrivateKeyInfo'.
 
 ssl_downgrade({tcp_socket, _}, _) -> {error, timeout};
 ssl_downgrade({ssl_socket, Socket}, Timeout) ->
