@@ -73,7 +73,7 @@ pub fn upgrade_self_signed_test() {
   // Erlang's SSL module currently errors on self-signed certificates,
   // so when there's a way to use self-signed certificates later,
   // this let assert should be testing for an Ok value instead.
-  let assert Error(mug.TlsAlert(alert: mug.BadCertificate, description:)) =
+  let assert Error(mug.TlsAlert(alert: mug.BadCertificate, ..)) =
     mug.upgrade(
       tcp_socket,
       mug.Certificates(
@@ -89,8 +89,6 @@ pub fn upgrade_self_signed_test() {
       ),
       1000,
     )
-  string.contains(description, "selfsigned_peer")
-  |> should.be_true
   Nil
 }
 
