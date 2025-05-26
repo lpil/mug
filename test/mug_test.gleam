@@ -102,7 +102,7 @@ pub fn hello_world_test() {
   assert Error(mug.Closed) == mug.receive(socket, timeout_milliseconds: 0)
 }
 
-pub fn active_mode_test() {
+pub fn active_mode_once_test() {
   let socket = connect()
 
   // Ask for the next packet to be sent as a message
@@ -131,6 +131,52 @@ pub fn active_mode_test() {
 
   // The socket is back in passive mode, we can receive from it directly again.
   assert Ok(<<"Hello, Mike!\n":utf8>>) == mug.receive(socket, 0)
+  assert Error(mug.Timeout) == mug.receive(socket, 0)
+}
+
+pub fn active_mode_toggle_test() {
+  let socket = connect()
+
+  // Ask for all packets to be sent as a messages
+  mug.receive_all_packets_as_messages(socket)
+
+  // The socket is in use, we can't receive from it directly
+  assert Error(mug.Einval) == mug.receive(socket, 0)
+
+  // Send a message to the socket
+  assert Ok(Nil) == mug.send(socket, <<"Hello, Joe!\n":utf8>>)
+
+  let selector =
+    process.new_selector()
+    |> mug.select_tcp_messages(fn(msg) { msg })
+
+  let assert Ok(mug.Packet(packet_socket, <<"Hello, Joe!\n":utf8>>)) =
+    process.selector_receive(selector, 100)
+
+  assert packet_socket == socket
+
+  // Send another packet
+  assert Ok(Nil) == mug.send(socket, <<"Hello, Mike!\n":utf8>>)
+
+  // The socket is still in use, we can't receive from it directly
+  assert Error(mug.Einval) == mug.receive(socket, 0)
+
+  let assert Ok(mug.Packet(packet_socket, <<"Hello, Mike!\n":utf8>>)) =
+    process.selector_receive(selector, 100)
+
+  assert packet_socket == socket
+
+  // Toggle back to passive mode
+  mug.stop_receiving_packets_as_messages(socket)
+
+  // Send a third packet
+  assert Ok(Nil) == mug.send(socket, <<"Hello, Mary!\n":utf8>>)
+
+  // The socket is in passive mode, so we don't get another message.
+  assert Error(Nil) == process.selector_receive(selector, 100)
+
+  // The socket is back in passive mode, we can receive from it directly again.
+  assert Ok(<<"Hello, Mary!\n":utf8>>) == mug.receive(socket, 0)
   assert Error(mug.Timeout) == mug.receive(socket, 0)
 }
 

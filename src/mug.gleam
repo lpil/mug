@@ -245,6 +245,9 @@ type ModeValue {
 
 type ActiveValue
 
+@external(erlang, "mug_ffi", "active")
+fn active() -> ActiveValue
+
 @external(erlang, "mug_ffi", "passive")
 fn passive() -> ActiveValue
 
@@ -337,6 +340,27 @@ pub fn shutdown(socket: Socket) -> Result(Nil, Error)
 ///
 pub fn receive_next_packet_as_message(socket: Socket) -> Nil {
   set_socket_options(socket, [Active(active_once())])
+  Nil
+}
+
+/// Switch the socket to active mode, meaning that all packets received on
+/// the socket will be sent as Erlang messages to the socket owner's inbox.
+///
+/// See `receive_next_packet_as_message` for details.
+///
+pub fn receive_all_packets_as_messages(socket: Socket) -> Nil {
+  set_socket_options(socket, [Active(active())])
+  Nil
+}
+
+/// Switch the socket to passive mode, meaning that packets received on the 
+/// socket will no longer be sent as Erlang messages to the socket owner's inbox.
+///
+/// Cancels the effect of `receive_next_packet_as_message` or 
+/// `receive_all_packets_as_messages`, if they have been called.
+///
+pub fn stop_receiving_packets_as_messages(socket: Socket) -> Nil {
+  set_socket_options(socket, [Active(passive())])
   Nil
 }
 

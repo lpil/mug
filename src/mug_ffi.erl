@@ -1,9 +1,12 @@
 -module(mug_ffi).
 
--export([send/2, shutdown/1, coerce_tcp_message/1, active_once/0, passive/0]).
+-export([send/2, shutdown/1, coerce_tcp_message/1, active_once/0, active/0, passive/0]).
 
 active_once() ->
     once.
+
+active() ->
+    true.
 
 passive() ->
     false.
