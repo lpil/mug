@@ -8,10 +8,9 @@ repository = { type = "github", user = "lpil", repo = "mug" }
 links = [{ title = "Website", href = "https://gleam.run" }]
 
 [dependencies]
-gleam_stdlib = ">= 0.44.0 and < 2.0.0"
-gleam_erlang = ">= 0.22.0 and < 1.0.0"
+gleam_stdlib = ">= 0.60.0 and < 2.0.0"
+gleam_erlang = ">= 1.0.0-rc1 and < 2.0.0"
 
 [dev-dependencies]
 gleeunit = ">= 1.2.0 and < 2.0.0"
-gleam_otp = ">= 0.14.1 and < 1.0.0"
-glisten = ">= 6.0.0 and < 7.0.0"
+glisten = { git = "git@github.com:rawhat/glisten.git", ref = "gleam-erlang-v1" }
