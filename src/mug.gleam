@@ -141,7 +141,7 @@ pub fn connect(options: ConnectionOptions) -> Result(Socket, Error) {
   let gen_options = [
     // When data is received on the socket queue it in the TCP stack rather than
     // sending it as an Erlang message to the socket owner's inbox.
-    #(Active, dynamic.from(False)),
+    #(Active, dynamic.bool(False)),
     // We want the data from the socket as bit arrays please, not lists.
     #(Mode, dynamic.from(Binary)),
   ]
@@ -268,39 +268,19 @@ pub fn selecting_tcp_messages(
   selector: process.Selector(t),
   mapper: fn(TcpMessage) -> t,
 ) -> process.Selector(t) {
-  let tcp = atom.create_from_string("tcp")
-  let closed = atom.create_from_string("tcp_closed")
-  let error = atom.create_from_string("tcp_error")
+  let tcp = atom.create("tcp")
+  let closed = atom.create("tcp_closed")
+  let error = atom.create("tcp_error")
 
   selector
-  |> process.selecting_record3(tcp, unsafe_coerce_packet(mapper))
-  |> process.selecting_record2(closed, unsafe_coerce_closed(mapper))
-  |> process.selecting_record3(error, unsafe_coerce_to_tcp_error(mapper))
+  |> process.select_record(tcp, 2, map_tcp_message(mapper))
+  |> process.select_record(closed, 1, map_tcp_message(mapper))
+  |> process.select_record(error, 2, map_tcp_message(mapper))
 }
 
-fn unsafe_coerce_packet(
-  mapper: fn(TcpMessage) -> t,
-) -> fn(Dynamic, Dynamic) -> t {
-  fn(socket, data) {
-    Packet(unsafe_coerce(socket), unsafe_coerce(data))
-    |> mapper
-  }
+fn map_tcp_message(mapper: fn(TcpMessage) -> t) -> fn(Dynamic) -> t {
+  fn(message) { mapper(unsafe_decode(message)) }
 }
 
-fn unsafe_coerce_closed(mapper: fn(TcpMessage) -> t) -> fn(Dynamic) -> t {
-  fn(socket) {
-    SocketClosed(unsafe_coerce(socket))
-    |> mapper
-  }
-}
-
-fn unsafe_coerce_to_tcp_error(
-  mapper: fn(TcpMessage) -> t,
-) -> fn(Dynamic, Dynamic) -> t {
-  fn(socket, reason) {
-    mapper(TcpError(unsafe_coerce(socket), unsafe_coerce(reason)))
-  }
-}
-
-@external(erlang, "mug_ffi", "coerce")
-fn unsafe_coerce(data: Dynamic) -> a
+@external(erlang, "mug_ffi", "coerce_tcp_message")
+fn unsafe_decode(message: Dynamic) -> TcpMessage
