@@ -25,7 +25,7 @@ pub opaque type Socket {
 /// with `connect` or `upgrade`). Returns False if the socket is a
 /// plain-text TCP connection.
 ///
-pub fn socket_is_ssl(socket: Socket) {
+pub fn socket_is_tls(socket: Socket) {
   case socket {
     SslSocket(_) -> True
     TcpSocket(_) -> False

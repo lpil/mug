@@ -14,7 +14,7 @@ fn connect() {
     |> mug.with_tls()
     |> mug.dangerously_disable_verification()
     |> mug.connect()
-  let assert True = mug.socket_is_ssl(socket)
+  let assert True = mug.socket_is_tls(socket)
   socket
 }
 
@@ -58,7 +58,7 @@ pub fn upgrade_test() {
     |> mug.connect()
   let assert Ok(socket) =
     mug.upgrade(tcp_socket, mug.DangerouslyDisableVerification, 1000)
-  let assert True = mug.socket_is_ssl(socket)
+  let assert True = mug.socket_is_tls(socket)
   let assert Ok(Nil) = mug.send(socket, <<"Hello, Joe!\n":utf8>>)
   let assert Ok(data) = mug.receive(socket, 500)
   should.equal(data, <<"Hello, Joe!\n":utf8>>)
