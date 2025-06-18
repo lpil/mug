@@ -12,9 +12,9 @@ import mug/internal/ssl_options.{
 }
 import mug/internal/system_cacerts
 
-pub type TcpSocket
+type TcpSocket
 
-pub type SslSocket
+type SslSocket
 
 pub opaque type Socket {
   TcpSocket(TcpSocket)
