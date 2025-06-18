@@ -534,23 +534,38 @@ pub fn upgrade(
   }
 }
 
+@external(erlang, "mug_ffi", "ssl_downgrade")
+fn ssl_downgrade(
+  socket: SslSocket,
+  milliseconds timeout: Int,
+) -> Result(#(TcpSocket, Option(BitArray)), Error)
+
 /// Attempts to downgrade the connection. If downgrade is not successful, the socket is closed.
 ///
-/// On successful downgrade, it returns the downgraded TCP socket, and *optionally* some binary data
-/// that must be treated as the first bytes received on the downgraded connection.  
-/// If the connection gets closed instead of getting downgraded, then the `Closed` error is returned.  
+/// On successful downgrade, it returns the downgraded TCP socket, and *optionally*
+/// some binary data that must be treated as the first bytes received on the
+/// downgraded connection. If the connection gets closed instead of getting
+/// downgraded, then the `Closed` error is returned. 
 ///
-/// If this function is called on a TcpSocket, it will return a timeout error.
+/// If this function is called on a TcpSocket, it will return the same socket
+/// and None for the downgraded data.
 ///
 /// Internally, it uses [`ssl:close/2`](https://www.erlang.org/doc/apps/ssl/ssl.html#close/2) 
-/// to perform the downgrade, which returns `ok` if the socket is closed, while this function returns
-/// an error. It is recommended against using this function to close the socket. Use `shutdown` instead.
+/// to perform the downgrade, which returns `ok` if the socket is closed, while
+/// this function returns an error. It is recommended against using this function
+/// to close the socket. Use `shutdown` instead.
 ///
-@external(erlang, "mug_ffi", "ssl_downgrade")
 pub fn downgrade(
   socket: Socket,
   milliseconds timeout: Int,
-) -> Result(#(TcpSocket, Option(BitArray)), Error)
+) -> Result(#(Socket, Option(BitArray)), Error) {
+  case socket {
+    SslSocket(sock) ->
+      ssl_downgrade(sock, timeout)
+      |> result.map(fn(x) { #(TcpSocket(x.0), x.1) })
+    TcpSocket(sock) -> Ok(#(TcpSocket(sock), None))
+  }
+}
 
 /// Send a packet to the client.
 ///

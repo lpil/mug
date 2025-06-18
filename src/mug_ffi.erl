@@ -38,8 +38,7 @@ normalize_key_algo(dsa_private_key) -> 'DSAPrivateKey';
 normalize_key_algo(ec_private_key) -> 'ECPrivateKey';
 normalize_key_algo(private_key_info) -> 'PrivateKeyInfo'.
 
-ssl_downgrade({tcp_socket, _}, _) -> {error, timeout};
-ssl_downgrade({ssl_socket, Socket}, Timeout) ->
+ssl_downgrade(Socket, Timeout) ->
     case ssl:close(Socket, Timeout) of
         ok -> {error, closed};
         {ok, Port} -> {ok, {Port, nil}};
