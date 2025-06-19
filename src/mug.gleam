@@ -4,6 +4,7 @@ import gleam/erlang/atom
 import gleam/erlang/charlist.{type Charlist}
 import gleam/erlang/process
 
+/// A TCP socket, used to send and receive TCP messages.
 pub type Socket
 
 type DoNotLeak
@@ -174,20 +175,20 @@ fn gen_tcp_connect(
   timeout: Int,
 ) -> Result(Socket, Error)
 
-/// Send a packet to the client.
+/// Send a message to the client.
 ///
-pub fn send(socket: Socket, packet: BitArray) -> Result(Nil, Error) {
-  send_builder(socket, bytes_tree.from_bit_array(packet))
+pub fn send(socket: Socket, message: BitArray) -> Result(Nil, Error) {
+  send_builder(socket, bytes_tree.from_bit_array(message))
 }
 
-/// Send a packet to the client, the data in `BytesBuilder`. Using this function
+/// Send a message to the client, the data in `BytesBuilder`. Using this function
 /// is more efficient turning an `BytesBuilder` or a `StringBuilder` into a
 /// `BitArray` to use with the `send` function.
 ///
 @external(erlang, "mug_ffi", "send")
 pub fn send_builder(socket: Socket, packet: BytesTree) -> Result(Nil, Error)
 
-/// Receive a packet from the client.
+/// Receive a message from the client.
 ///
 /// Errors if the socket is closed, if the timeout is reached, or if there is
 /// some other problem receiving the packet.
@@ -224,7 +225,8 @@ fn gen_tcp_receive(
   timeout_milliseconds timeout: Int,
 ) -> Result(BitArray, Error)
 
-/// Close the socket, ensuring that any data buffered in the socket is flushed to the operating system kernel socket first.
+/// Close the socket, ensuring that any data buffered in the socket is flushed
+/// to the operating system kernel socket first.
 ///
 @external(erlang, "mug_ffi", "shutdown")
 pub fn shutdown(socket: Socket) -> Result(Nil, Error)
@@ -265,7 +267,7 @@ pub type TcpMessage {
 /// controls, rather than any specific one. If you wish to only handle messages
 /// from one socket then use one process per socket.
 ///
-pub fn selecting_tcp_messages(
+pub fn select_tcp_messages(
   selector: process.Selector(t),
   mapper: fn(TcpMessage) -> t,
 ) -> process.Selector(t) {

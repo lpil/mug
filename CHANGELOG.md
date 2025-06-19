@@ -1,7 +1,8 @@
 # Changelog
 
-## v1.3.0 - 2024-12-04
+## v2.0.0 - 2025-06-19
 
+- `selecting_tcp_messages` has been renamed to `select_tcp_messages`.
 - Updated for gleam_erlang v1.0.0.
 - Updated for gleam_stdlib v0.60.0.
 
