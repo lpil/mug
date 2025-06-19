@@ -141,29 +141,30 @@ pub fn connect(options: ConnectionOptions) -> Result(Socket, Error) {
   let gen_options = [
     // When data is received on the socket queue it in the TCP stack rather than
     // sending it as an Erlang message to the socket owner's inbox.
-    #(Active, dynamic.bool(False)),
+    Active(passive()),
     // We want the data from the socket as bit arrays please, not lists.
-    #(Mode, dynamic.from(Binary)),
+    Mode(Binary),
   ]
   let host = charlist.from_string(options.host)
   gen_tcp_connect(host, options.port, gen_options, options.timeout)
-}
-
-type GenTcpOptionName {
-  Active
-  Mode
 }
 
 type ModeValue {
   Binary
 }
 
-type ActiveValue {
-  Once
-}
+type ActiveValue
 
-type GenTcpOption =
-  #(GenTcpOptionName, Dynamic)
+@external(erlang, "mug_ffi", "passive")
+fn passive() -> ActiveValue
+
+@external(erlang, "mug_ffi", "active_once")
+fn active_once() -> ActiveValue
+
+type GenTcpOption {
+  Active(ActiveValue)
+  Mode(ModeValue)
+}
 
 @external(erlang, "gen_tcp", "connect")
 fn gen_tcp_connect(
@@ -240,7 +241,7 @@ pub fn shutdown(socket: Socket) -> Result(Nil, Error)
 /// process that established the socket with the `connect` function.
 ///
 pub fn receive_next_packet_as_message(socket: Socket) -> Nil {
-  set_socket_options(socket, [#(Active, dynamic.from(Once))])
+  set_socket_options(socket, [Active(active_once())])
   Nil
 }
 

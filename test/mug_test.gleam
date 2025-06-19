@@ -15,7 +15,7 @@ pub const port = 64_793
 pub fn main() {
   // Start an echo TCP server for the tests to use
   let assert Ok(_) =
-    glisten.handler(fn(_) { #(Nil, None) }, fn(state, msg, conn) {
+    glisten.new(fn(_conn) { #(Nil, None) }, fn(state, msg, conn) {
       let assert glisten.Packet(msg) = msg
       // Close connection if we receive a null, otherwise echo back.
       let assert Ok(_) = case msg {
@@ -25,7 +25,7 @@ pub fn main() {
 
       glisten.continue(state)
     })
-    |> glisten.serve(port)
+    |> glisten.start(port)
 
   gleeunit.main()
 }
