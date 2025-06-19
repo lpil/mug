@@ -86,7 +86,7 @@ pub fn active_mode_test() {
 
   let selector =
     process.new_selector()
-    |> mug.selecting_tcp_messages(fn(msg) { msg })
+    |> mug.select_tcp_messages(fn(msg) { msg })
 
   let assert Ok(mug.Packet(packet_socket, <<"Hello, Joe!\n":utf8>>)) =
     process.selector_receive(selector, 100)
@@ -116,7 +116,7 @@ pub fn active_mode_close_test() {
 
   let selector =
     process.new_selector()
-    |> mug.selecting_tcp_messages(fn(msg) { msg })
+    |> mug.select_tcp_messages(fn(msg) { msg })
 
   let assert Ok(mug.SocketClosed(closed_socket)) =
     process.selector_receive(selector, 100)
@@ -133,7 +133,7 @@ pub fn active_mode_error_test() {
 
   let selector =
     process.new_selector()
-    |> mug.selecting_tcp_messages(fn(msg) { msg })
+    |> mug.select_tcp_messages(fn(msg) { msg })
 
   raw_send(process.self(), #(atom.create("tcp_error"), socket, mug.Ehostdown))
   let assert Ok(mug.TcpError(error_socket, mug.Ehostdown)) =
