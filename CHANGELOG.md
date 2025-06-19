@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.3.0 - 2024-12-04
+
+- Updated for gleam_erlang v1.0.0.
+- Updated for gleam_stdlib v0.60.0.
+
 ## v1.2.0 - 2024-12-04
 
 - Updated for gleam_stdlib v0.44.0.
