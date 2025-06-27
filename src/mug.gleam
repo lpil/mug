@@ -98,12 +98,19 @@ pub type Error {
   Exdev
 }
 
+pub type Inet {
+  IpV4
+  IpV6
+}
+
 pub type ConnectionOptions {
   ConnectionOptions(
     /// The hostname of the server to connect to.
     host: String,
     /// The port of the server to connect to.
     port: Int,
+    /// Use IpV4 or IpV6
+    inet: Inet,
     /// A timeout in milliseconds for the connection to be established.
     ///
     /// Note that if the operating system returns a timeout then this package
@@ -116,7 +123,7 @@ pub type ConnectionOptions {
 /// Create a new set of connection options.
 ///
 pub fn new(host: String, port port: Int) -> ConnectionOptions {
-  ConnectionOptions(host: host, port: port, timeout: 1000)
+  ConnectionOptions(host: host, port: port,inet: Ipv4, timeout: 1000)
 }
 
 /// Specify a timeout for the connection to be established.
@@ -126,6 +133,15 @@ pub fn timeout(
   milliseconds timeout: Int,
 ) -> ConnectionOptions {
   ConnectionOptions(..options, timeout: timeout)
+}
+
+/// Specify which inet to use, ipv4 or ipv6
+///
+pub fn inet(
+  options: ConnectionOptions,
+  inet: Inet,
+) -> ConnectionOptions {
+  ConnectionOptions(..options, inet: inet)
 }
 
 /// Establish a TCP connection to the server specified in the connection
@@ -162,9 +178,12 @@ fn passive() -> ActiveValue
 @external(erlang, "mug_ffi", "active_once")
 fn active_once() -> ActiveValue
 
+type InetValue
+
 type GenTcpOption {
   Active(ActiveValue)
   Mode(ModeValue)
+  InetInterface(InetValue)
 }
 
 @external(erlang, "gen_tcp", "connect")
