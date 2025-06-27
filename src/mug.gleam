@@ -123,7 +123,7 @@ pub type ConnectionOptions {
 /// Create a new set of connection options.
 ///
 pub fn new(host: String, port port: Int) -> ConnectionOptions {
-  ConnectionOptions(host: host, port: port,inet: Ipv4, timeout: 1000)
+  ConnectionOptions(host: host, port: port, inet: Ipv4, timeout: 1000)
 }
 
 /// Specify a timeout for the connection to be established.
