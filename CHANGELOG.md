@@ -1,5 +1,11 @@
 # Changelog
 
+## v3.0.0 - 2025-06-28
+
+- IPv6 support added. By default IPv6 will be used and IPv4 will be used as a
+  fallback. This can be configured with the `ip_version_preference` option.
+- `connect` now returns the new `ConnectError` type when it fails.
+
 ## v2.0.0 - 2025-06-19
 
 - `selecting_tcp_messages` has been renamed to `select_tcp_messages`.
