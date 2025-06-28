@@ -3,11 +3,20 @@ import gleam/dynamic.{type Dynamic}
 import gleam/erlang/atom
 import gleam/erlang/charlist.{type Charlist}
 import gleam/erlang/process
+import gleam/result
 
 /// A TCP socket, used to send and receive TCP messages.
 pub type Socket
 
 type DoNotLeak
+
+/// Errors that can occur when establishing a TCP connection.
+///
+pub type ConnectError {
+  ConnectFailedIpv4(ipv4: Error)
+  ConnectFailedIpv6(ipv6: Error)
+  ConnectFailedBoth(ipv4: Error, ipv6: Error)
+}
 
 /// Errors that can occur when working with TCP sockets.
 ///
@@ -106,26 +115,79 @@ pub type ConnectionOptions {
     port: Int,
     /// A timeout in milliseconds for the connection to be established.
     ///
+    /// If both IPv4 and IPv6 are being tried (the default) then this timeout
+    /// will be used twice, so connecting in total could take twice this amount
+    /// of time.
+    ///
     /// Note that if the operating system returns a timeout then this package
     /// will also return a timeout, even if this timeout value has not been
     /// reached yet.
+    ///
+    /// The default is 1000ms.
+    ///
     timeout: Int,
+    /// What approach to take selecting between IPv4 and IPv6.
+    ///
+    /// The default is `Ipv6Preferred`.
+    ///
+    ip_version_preference: IpVersionPreference,
   )
 }
 
 /// Create a new set of connection options.
 ///
 pub fn new(host: String, port port: Int) -> ConnectionOptions {
-  ConnectionOptions(host: host, port: port, timeout: 1000)
+  ConnectionOptions(
+    host: host,
+    port: port,
+    timeout: 1000,
+    ip_version_preference: Ipv6Preferred,
+  )
 }
 
-/// Specify a timeout for the connection to be established.
+/// What approach to take selecting between IPv4 and IPv6.
+/// See the `IpVersionPreference` type for documentation.
+///
+/// The default is `Ipv6Preferred`.
+///
+pub fn ip_version_preference(
+  options: ConnectionOptions,
+  preference: IpVersionPreference,
+) -> ConnectionOptions {
+  ConnectionOptions(..options, ip_version_preference: preference)
+}
+
+/// Specify a timeout for the connection to be established, in milliseconds.
+///
+/// The default is 1000ms.
 ///
 pub fn timeout(
   options: ConnectionOptions,
   milliseconds timeout: Int,
 ) -> ConnectionOptions {
   ConnectionOptions(..options, timeout: timeout)
+}
+
+/// What approach to take with selection between IPv4 and IPv6
+///
+/// IPv6 is superior when available, but unfortunately not all networks
+/// support it.
+///
+pub type IpVersionPreference {
+  /// Only connect over IPv4.
+  ///
+  Ipv4Only
+  /// Attempt to connect over IPv4 first, attempting IPv6 if connection with
+  /// IPv4 did not succeed.
+  ///
+  Ipv4Preferred
+  /// Only connect over IPv6.
+  ///
+  Ipv6Only
+  /// Attempt to connect over IPv6 first, attempting IPv4 if connection with
+  /// IPv6 did not succeed.
+  ///
+  Ipv6Preferred
 }
 
 /// Establish a TCP connection to the server specified in the connection
@@ -138,16 +200,43 @@ pub fn timeout(
 /// `receive_next_packet_as_message` function can be used to switch the socket
 /// to active mode and receive the next packet as an Erlang message.
 ///
-pub fn connect(options: ConnectionOptions) -> Result(Socket, Error) {
-  let gen_options = [
-    // When data is received on the socket queue it in the TCP stack rather than
-    // sending it as an Erlang message to the socket owner's inbox.
-    Active(passive()),
-    // We want the data from the socket as bit arrays please, not lists.
-    Mode(Binary),
-  ]
+pub fn connect(options: ConnectionOptions) -> Result(Socket, ConnectError) {
   let host = charlist.from_string(options.host)
-  gen_tcp_connect(host, options.port, gen_options, options.timeout)
+  let connect = fn(inet) {
+    let gen_options = [
+      inet,
+      // When data is received on the socket queue it in the TCP stack rather than
+      // sending it as an Erlang message to the socket owner's inbox.
+      Active(passive()),
+      // We want the data from the socket as bit arrays please, not lists.
+      Mode(Binary),
+    ]
+    gen_tcp_connect(host, options.port, gen_options, options.timeout)
+  }
+  case options.ip_version_preference {
+    Ipv4Only -> connect(Inet) |> result.map_error(ConnectFailedIpv4)
+    Ipv6Only -> connect(Inet6) |> result.map_error(ConnectFailedIpv6)
+
+    Ipv4Preferred ->
+      case connect(Inet) {
+        Ok(conn) -> Ok(conn)
+        Error(ipv4) ->
+          case connect(Inet6) {
+            Ok(conn) -> Ok(conn)
+            Error(ipv6) -> Error(ConnectFailedBoth(ipv4:, ipv6:))
+          }
+      }
+
+    Ipv6Preferred ->
+      case connect(Inet6) {
+        Ok(conn) -> Ok(conn)
+        Error(ipv6) ->
+          case connect(Inet) {
+            Ok(conn) -> Ok(conn)
+            Error(ipv4) -> Error(ConnectFailedBoth(ipv4:, ipv6:))
+          }
+      }
+  }
 }
 
 type ModeValue {
@@ -163,6 +252,10 @@ fn passive() -> ActiveValue
 fn active_once() -> ActiveValue
 
 type GenTcpOption {
+  /// Use IPv4
+  Inet
+  /// Use IPv6
+  Inet6
   Active(ActiveValue)
   Mode(ModeValue)
 }

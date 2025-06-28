@@ -39,10 +39,42 @@ fn connect() -> mug.Socket {
 }
 
 pub fn connect_invalid_host_test() {
-  let assert Error(mug.Nxdomain) =
-    mug.new("invalid.example.com", port: port)
+  assert mug.new("invalid.example.com", port: port)
     |> mug.timeout(milliseconds: 500)
     |> mug.connect()
+    == Error(mug.ConnectFailedBoth(mug.Nxdomain, mug.Nxdomain))
+}
+
+pub fn connect_invalid_host_only_ipv4_test() {
+  assert mug.new("invalid.example.com", port: port)
+    |> mug.ip_version_preference(mug.Ipv4Only)
+    |> mug.timeout(milliseconds: 500)
+    |> mug.connect()
+    == Error(mug.ConnectFailedIpv4(mug.Nxdomain))
+}
+
+pub fn connect_invalid_host_only_ipv6_test() {
+  assert mug.new("invalid.example.com", port: port)
+    |> mug.ip_version_preference(mug.Ipv6Only)
+    |> mug.timeout(milliseconds: 500)
+    |> mug.connect()
+    == Error(mug.ConnectFailedIpv6(mug.Nxdomain))
+}
+
+pub fn connect_invalid_host_prefer_ipv4_test() {
+  assert mug.new("invalid.example.com", port: port)
+    |> mug.ip_version_preference(mug.Ipv4Preferred)
+    |> mug.timeout(milliseconds: 500)
+    |> mug.connect()
+    == Error(mug.ConnectFailedBoth(mug.Nxdomain, mug.Nxdomain))
+}
+
+pub fn connect_invalid_host_prefer_ipv6_test() {
+  assert mug.new("invalid.example.com", port: port)
+    |> mug.ip_version_preference(mug.Ipv6Preferred)
+    |> mug.timeout(milliseconds: 500)
+    |> mug.connect()
+    == Error(mug.ConnectFailedBoth(mug.Nxdomain, mug.Nxdomain))
 }
 
 pub fn hello_world_test() {
@@ -50,26 +82,24 @@ pub fn hello_world_test() {
 
   // Nothing has been sent by the echo server yet, so we get a timeout if we try
   // to receive a packet.
-  let assert Error(mug.Timeout) = mug.receive(socket, timeout_milliseconds: 0)
+  assert mug.receive(socket, timeout_milliseconds: 0) == Error(mug.Timeout)
 
-  let assert Ok(Nil) = mug.send(socket, <<"Hello, Joe!\n":utf8>>)
-  let assert Ok(Nil) = mug.send(socket, <<"Hello, Mike!\n":utf8>>)
-  let assert Ok(Nil) = mug.send_builder(socket, bits("System still working?\n"))
-  let assert Ok(Nil) = mug.send_builder(socket, bits("Seems to be!"))
+  assert Ok(Nil) == mug.send(socket, <<"Hello, Joe!\n":utf8>>)
+  assert Ok(Nil) == mug.send(socket, <<"Hello, Mike!\n":utf8>>)
+  assert Ok(Nil) == mug.send_builder(socket, bits("System still working?\n"))
+  assert Ok(Nil) == mug.send_builder(socket, bits("Seems to be!"))
 
   // Allow some time to echo things back, to make the test more reliable
   process.sleep(20)
   let assert Ok(packet) = mug.receive(socket, timeout_milliseconds: 100)
   let assert Ok(packet) = bit_array.to_string(packet)
-  string.split(packet, "\n")
-  |> should.equal([
-    "Hello, Joe!", "Hello, Mike!", "System still working?", "Seems to be!",
-  ])
+  assert string.split(packet, "\n")
+    == ["Hello, Joe!", "Hello, Mike!", "System still working?", "Seems to be!"]
 
   let assert Ok(_) = mug.shutdown(socket)
 
-  let assert Error(mug.Closed) = mug.send(socket, <<"One more thing!":utf8>>)
-  let assert Error(mug.Closed) = mug.receive(socket, timeout_milliseconds: 0)
+  assert Error(mug.Closed) == mug.send(socket, <<"One more thing!":utf8>>)
+  assert Error(mug.Closed) == mug.receive(socket, timeout_milliseconds: 0)
 }
 
 pub fn active_mode_test() {
@@ -79,10 +109,10 @@ pub fn active_mode_test() {
   mug.receive_next_packet_as_message(socket)
 
   // The socket is in use, we can't receive from it directly
-  let assert Error(mug.Einval) = mug.receive(socket, 0)
+  assert Error(mug.Einval) == mug.receive(socket, 0)
 
   // Send a message to the socket
-  let assert Ok(Nil) = mug.send(socket, <<"Hello, Joe!\n":utf8>>)
+  assert Ok(Nil) == mug.send(socket, <<"Hello, Joe!\n":utf8>>)
 
   let selector =
     process.new_selector()
@@ -91,18 +121,17 @@ pub fn active_mode_test() {
   let assert Ok(mug.Packet(packet_socket, <<"Hello, Joe!\n":utf8>>)) =
     process.selector_receive(selector, 100)
 
-  packet_socket
-  |> should.equal(socket)
+  assert packet_socket == socket
 
   // Send another packet
-  let assert Ok(Nil) = mug.send(socket, <<"Hello, Mike!\n":utf8>>)
+  assert Ok(Nil) == mug.send(socket, <<"Hello, Mike!\n":utf8>>)
 
   // The socket is in passive mode, so we don't get another message.
-  let assert Error(Nil) = process.selector_receive(selector, 100)
+  assert Error(Nil) == process.selector_receive(selector, 100)
 
   // The socket is back in passive mode, we can receive from it directly again.
-  let assert Ok(<<"Hello, Mike!\n":utf8>>) = mug.receive(socket, 0)
-  let assert Error(mug.Timeout) = mug.receive(socket, 0)
+  assert Ok(<<"Hello, Mike!\n":utf8>>) == mug.receive(socket, 0)
+  assert Error(mug.Timeout) == mug.receive(socket, 0)
 }
 
 pub fn active_mode_close_test() {
