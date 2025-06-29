@@ -6,7 +6,7 @@
 A TCP client for Gleam!
 
 ```sh
-gleam add mug
+gleam add mug@3
 ```
 
 ```gleam
@@ -20,7 +20,7 @@ pub fn main() {
     |> mug.connect()
 
   // Send a packet to the server
-  let assert Ok(Nil) = mug.send(socket, <<"Hello, Joe!\n":utf8>>)
+  assert mug.send(socket, <<"Hello, Joe!\n":utf8>>) == Ok(Nil)
 
   // Receive a packet back
   let assert Ok(packet) = mug.receive(socket, timeout_milliseconds: 100)
