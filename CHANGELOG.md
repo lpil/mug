@@ -1,5 +1,9 @@
 # Changelog
 
+## v3.1.0 - 2025-09-09
+
+- The `describe_error` function has been added.
+
 ## v3.0.0 - 2025-06-28
 
 - IPv6 support added. By default IPv6 will be used and IPv4 will be used as a

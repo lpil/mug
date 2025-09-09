@@ -26,85 +26,249 @@ pub type ConnectError {
 ///
 pub type Error {
   // https://www.erlang.org/doc/man/inet#type-posix
+  /// Connection closed
   Closed
+  /// Operation timed out
   Timeout
+  /// Address already in use
   Eaddrinuse
+  /// Cannot assign requested address
   Eaddrnotavail
+  /// Address family not supported
   Eafnosupport
+  /// Operation already in progress
   Ealready
+  /// Connection aborted
   Econnaborted
+  /// Connection refused
   Econnrefused
+  /// Connection reset by peer
   Econnreset
+  /// Destination address required
   Edestaddrreq
+  /// Host is down
   Ehostdown
+  /// No route to host
   Ehostunreach
+  /// Operation now in progress
   Einprogress
+  /// Socket is already connected
   Eisconn
+  /// Message too long
   Emsgsize
+  /// Network is down
   Enetdown
+  /// Network is unreachable
   Enetunreach
+  /// Package not installed
   Enopkg
+  /// Protocol not available
   Enoprotoopt
+  /// Socket is not connected
   Enotconn
+  /// Inappropriate ioctl for device
   Enotty
+  /// Socket operation on non-socket
   Enotsock
+  /// Protocol error
   Eproto
+  /// Protocol not supported
   Eprotonosupport
+  /// Protocol wrong type for socket
   Eprototype
+  /// Socket type not supported
   Esocktnosupport
+  /// Connection timed out
   Etimedout
+  /// Operation would block
   Ewouldblock
+  /// Bad port number
   Exbadport
+  /// Bad sequence number
   Exbadseq
+  /// Non-existent domain
   Nxdomain
+
   // https://www.erlang.org/doc/man/file#type-posix
+  /// Permission denied
   Eacces
+  /// Resource temporarily unavailable
   Eagain
+  /// Bad file descriptor
   Ebadf
+  /// Bad message
   Ebadmsg
+  /// Device or resource busy
   Ebusy
+  /// Resource deadlock avoided
   Edeadlk
+  /// Resource deadlock avoided
   Edeadlock
+  /// Disk quota exceeded
   Edquot
+  /// File exists
   Eexist
+  /// Bad address
   Efault
+  /// File too large
   Efbig
+  /// Inappropriate file type or format
   Eftype
+  /// Interrupted system call
   Eintr
+  /// Invalid argument
   Einval
+  /// Input/output error
   Eio
+  /// Is a directory
   Eisdir
+  /// Too many levels of symbolic links
   Eloop
+  /// Too many open files
   Emfile
+  /// Too many links
   Emlink
+  /// Multihop attempted
   Emultihop
+  /// File name too long
   Enametoolong
+  /// Too many open files in system
   Enfile
+  /// No buffer space available
   Enobufs
+  /// No such device
   Enodev
+  /// No locks available
   Enolck
+  /// Link has been severed
   Enolink
+  /// No such file or directory
   Enoent
+  /// Out of memory
   Enomem
+  /// No space left on device
   Enospc
+  /// Out of streams resources
   Enosr
+  /// Device not a stream
   Enostr
+  /// Function not implemented
   Enosys
+  /// Block device required
   Enotblk
+  /// Not a directory
   Enotdir
+  /// Operation not supported
   Enotsup
+  /// No such device or address
   Enxio
+  /// Operation not supported on socket
   Eopnotsupp
+  /// Value too large for defined data type
   Eoverflow
+  /// Operation not permitted
   Eperm
+  /// Broken pipe
   Epipe
+  /// Result too large
   Erange
+  /// Read-only file system
   Erofs
+  /// Illegal seek
   Espipe
+  /// No such process
   Esrch
+  /// Stale file handle
   Estale
+  /// Text file busy
   Etxtbsy
+  /// Cross-device link
   Exdev
+}
+
+/// Convert an error into a human-readable description
+///
+pub fn describe_error(error: Error) -> String {
+  case error {
+    Closed -> "Connection closed"
+    Timeout -> "Operation timed out"
+    Eaddrinuse -> "Address already in use"
+    Eaddrnotavail -> "Cannot assign requested address"
+    Eafnosupport -> "Address family not supported"
+    Ealready -> "Operation already in progress"
+    Econnaborted -> "Connection aborted"
+    Econnrefused -> "Connection refused"
+    Econnreset -> "Connection reset by peer"
+    Edestaddrreq -> "Destination address required"
+    Ehostdown -> "Host is down"
+    Ehostunreach -> "No route to host"
+    Einprogress -> "Operation now in progress"
+    Eisconn -> "Socket is already connected"
+    Emsgsize -> "Message too long"
+    Enetdown -> "Network is down"
+    Enetunreach -> "Network is unreachable"
+    Enopkg -> "Package not installed"
+    Enoprotoopt -> "Protocol not available"
+    Enotconn -> "Socket is not connected"
+    Enotty -> "Inappropriate ioctl for device"
+    Enotsock -> "Socket operation on non-socket"
+    Eproto -> "Protocol error"
+    Eprotonosupport -> "Protocol not supported"
+    Eprototype -> "Protocol wrong type for socket"
+    Esocktnosupport -> "Socket type not supported"
+    Etimedout -> "Connection timed out"
+    Ewouldblock -> "Operation would block"
+    Exbadport -> "Bad port number"
+    Exbadseq -> "Bad sequence number"
+    Nxdomain -> "Non-existent domain"
+    Eacces -> "Permission denied"
+    Eagain -> "Resource temporarily unavailable"
+    Ebadf -> "Bad file descriptor"
+    Ebadmsg -> "Bad message"
+    Ebusy -> "Device or resource busy"
+    Edeadlk -> "Resource deadlock avoided"
+    Edeadlock -> "Resource deadlock avoided"
+    Edquot -> "Disk quota exceeded"
+    Eexist -> "File exists"
+    Efault -> "Bad address"
+    Efbig -> "File too large"
+    Eftype -> "Inappropriate file type or format"
+    Eintr -> "Interrupted system call"
+    Einval -> "Invalid argument"
+    Eio -> "Input/output error"
+    Eisdir -> "Is a directory"
+    Eloop -> "Too many levels of symbolic links"
+    Emfile -> "Too many open files"
+    Emlink -> "Too many links"
+    Emultihop -> "Multihop attempted"
+    Enametoolong -> "File name too long"
+    Enfile -> "Too many open files in system"
+    Enobufs -> "No buffer space available"
+    Enodev -> "No such device"
+    Enolck -> "No locks available"
+    Enolink -> "Link has been severed"
+    Enoent -> "No such file or directory"
+    Enomem -> "Out of memory"
+    Enospc -> "No space left on device"
+    Enosr -> "Out of streams resources"
+    Enostr -> "Device not a stream"
+    Enosys -> "Function not implemented"
+    Enotblk -> "Block device required"
+    Enotdir -> "Not a directory"
+    Enotsup -> "Operation not supported"
+    Enxio -> "No such device or address"
+    Eopnotsupp -> "Operation not supported on socket"
+    Eoverflow -> "Value too large for defined data type"
+    Eperm -> "Operation not permitted"
+    Epipe -> "Broken pipe"
+    Erange -> "Result too large"
+    Erofs -> "Read-only file system"
+    Espipe -> "Illegal seek"
+    Esrch -> "No such process"
+    Estale -> "Stale file handle"
+    Etxtbsy -> "Text file busy"
+    Exdev -> "Cross-device link"
+  }
 }
 
 pub type ConnectionOptions {
